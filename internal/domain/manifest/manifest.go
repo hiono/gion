@@ -63,6 +63,14 @@ type Repo struct {
 	RepoKey string `yaml:"repo_key"`
 	Branch  string `yaml:"branch"`
 	BaseRef string `yaml:"base_ref,omitempty"`
+
+	Provider  string            `yaml:"provider,omitempty"`
+	Namespace string            `yaml:"namespace,omitempty"`
+	Project   string            `yaml:"project,omitempty"`
+	Host      string            `yaml:"host,omitempty"`
+	Port      int               `yaml:"port,omitempty"`
+	Scheme    string            `yaml:"scheme,omitempty"`
+	Remotes   map[string]string `yaml:"remotes,omitempty"`
 }
 
 func Path(rootDir string) string {

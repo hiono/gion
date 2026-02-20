@@ -14,6 +14,7 @@ import (
 	"github.com/tasuku43/gion/internal/domain/manifest"
 	"github.com/tasuku43/gion/internal/domain/preset"
 	"github.com/tasuku43/gion/internal/domain/repo"
+	"github.com/tasuku43/gion/internal/domain/repospec"
 	"github.com/tasuku43/gion/internal/domain/workspace"
 	"github.com/tasuku43/gion/internal/infra/paths"
 	"github.com/tasuku43/gion/internal/ui"
@@ -150,11 +151,12 @@ func runManifestAdd(ctx context.Context, rootDir string, args []string, globalNo
 			if !ok {
 				return nil, fmt.Errorf("selected repo not found")
 			}
-			provider, err := providerByName(selected.Provider)
+			provider, err := ProviderByName(selected.Provider)
 			if err != nil {
 				return nil, err
 			}
-			prs, err := provider.FetchPRs(ctx, selected.Host, selected.Owner, selected.Repo)
+			spec := repospec.RepoSpec{Host: selected.Host, Owner: selected.Owner, Repo: selected.Repo}
+			prs, err := provider.FetchMRs(ctx, spec)
 			if err != nil {
 				return nil, err
 			}
@@ -171,11 +173,12 @@ func runManifestAdd(ctx context.Context, rootDir string, args []string, globalNo
 			if strings.ToLower(selected.Provider) != "github" {
 				return nil, fmt.Errorf("issue picker supports GitHub only for now: %s", selected.Host)
 			}
-			provider, err := providerByName(selected.Provider)
+			provider, err := ProviderByName(selected.Provider)
 			if err != nil {
 				return nil, err
 			}
-			issues, err := provider.FetchIssues(ctx, selected.Host, selected.Owner, selected.Repo)
+			spec := repospec.RepoSpec{Host: selected.Host, Owner: selected.Owner, Repo: selected.Repo}
+			issues, err := provider.FetchIssues(ctx, spec)
 			if err != nil {
 				return nil, err
 			}
@@ -500,11 +503,12 @@ func manifestAddReviewURL(ctx context.Context, rootDir, prURL string, apply func
 	if err != nil {
 		return err
 	}
-	provider, err := providerByName(req.Provider)
+	provider, err := ProviderByName(req.Provider)
 	if err != nil {
 		return err
 	}
-	pr, err := provider.FetchPR(ctx, req.Host, req.Owner, req.Repo, req.Number)
+	spec := repospec.RepoSpec{Host: req.Host, Owner: req.Owner, Repo: req.Repo}
+	pr, err := provider.FetchMR(ctx, spec, req.Number)
 	if err != nil {
 		return err
 	}
@@ -544,7 +548,7 @@ func manifestAddReviewURL(ctx context.Context, rootDir, prURL string, apply func
 		return fmt.Errorf("workspace exists on filesystem but missing in %s: %s (suggest: gion import)", manifest.FileName, workspaceID)
 	}
 	repoURL := buildRepoURLFromParts(req.Host, baseOwner, baseRepo)
-	spec, _, err := repo.Normalize(repoURL)
+	repoSpec, _, err := repo.Normalize(repoURL)
 	if err != nil {
 		return err
 	}
@@ -558,8 +562,8 @@ func manifestAddReviewURL(ctx context.Context, rootDir, prURL string, apply func
 		SourceURL:   prURL,
 		Repos: []manifest.Repo{
 			{
-				Alias:   strings.TrimSpace(spec.Repo),
-				RepoKey: strings.TrimSpace(spec.RepoKey),
+				Alias:   strings.TrimSpace(repoSpec.Repo),
+				RepoKey: strings.TrimSpace(repoSpec.RepoKey),
 				Branch:  strings.TrimSpace(pr.HeadRef),
 				BaseRef: formatPRBaseRef(pr.BaseRef),
 			},
@@ -676,11 +680,12 @@ func manifestAddIssueURL(ctx context.Context, rootDir, issueURL, branch, baseRef
 	if !strings.EqualFold(strings.TrimSpace(req.Provider), "github") {
 		return fmt.Errorf("unsupported issue provider: %s", req.Provider)
 	}
-	provider, err := providerByName(req.Provider)
+	provider, err := ProviderByName(req.Provider)
 	if err != nil {
 		return err
 	}
-	issue, err := provider.FetchIssue(ctx, req.Host, req.Owner, req.Repo, req.Number)
+	spec := repospec.RepoSpec{Host: req.Host, Owner: req.Owner, Repo: req.Repo}
+	issue, err := provider.FetchIssue(ctx, spec, req.Number)
 	if err != nil {
 		return err
 	}
@@ -698,7 +703,7 @@ func manifestAddIssueURL(ctx context.Context, rootDir, issueURL, branch, baseRef
 	}
 
 	repoURL := buildRepoURLFromParts(req.Host, req.Owner, req.Repo)
-	spec, _, err := repo.Normalize(repoURL)
+	normalizedSpec, _, err := repo.Normalize(repoURL)
 	if err != nil {
 		return err
 	}
@@ -735,8 +740,8 @@ func manifestAddIssueURL(ctx context.Context, rootDir, issueURL, branch, baseRef
 		SourceURL:   issueURL,
 		Repos: []manifest.Repo{
 			{
-				Alias:   strings.TrimSpace(spec.Repo),
-				RepoKey: strings.TrimSpace(spec.RepoKey),
+				Alias:   strings.TrimSpace(normalizedSpec.Repo),
+				RepoKey: strings.TrimSpace(normalizedSpec.RepoKey),
 				Branch:  branchValue,
 				BaseRef: strings.TrimSpace(baseRef),
 			},

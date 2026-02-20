@@ -4,14 +4,30 @@ import (
 	"context"
 	"fmt"
 	"strings"
+
+	"github.com/tasuku43/gion/internal/domain/repospec"
 )
 
-type provider interface {
+type IssueFetcher interface {
+	FetchIssues(ctx context.Context, spec repospec.RepoSpec) ([]issueSummary, error)
+	FetchIssue(ctx context.Context, spec repospec.RepoSpec, number int) (issueSummary, error)
+}
+
+type MRFetcher interface {
+	FetchMRs(ctx context.Context, spec repospec.RepoSpec) ([]prSummary, error)
+	FetchMR(ctx context.Context, spec repospec.RepoSpec, number int) (prSummary, error)
+}
+
+type URLBuilder interface {
+	BuildIssueURL(spec repospec.RepoSpec, number int) string
+	BuildMRURL(spec repospec.RepoSpec, number int) string
+}
+
+type Provider interface {
 	Name() string
-	FetchIssues(ctx context.Context, host, owner, repoName string) ([]issueSummary, error)
-	FetchIssue(ctx context.Context, host, owner, repoName string, number int) (issueSummary, error)
-	FetchPRs(ctx context.Context, host, owner, repoName string) ([]prSummary, error)
-	FetchPR(ctx context.Context, host, owner, repoName string, number int) (prSummary, error)
+	IssueFetcher
+	MRFetcher
+	URLBuilder
 }
 
 type githubProvider struct{}
@@ -20,27 +36,35 @@ func (githubProvider) Name() string {
 	return "github"
 }
 
-func (githubProvider) FetchIssues(ctx context.Context, host, owner, repoName string) ([]issueSummary, error) {
-	return fetchGitHubIssues(ctx, host, owner, repoName)
+func (githubProvider) FetchIssues(ctx context.Context, spec repospec.RepoSpec) ([]issueSummary, error) {
+	return fetchGitHubIssues(ctx, spec.Host, spec.Owner, spec.Repo)
 }
 
-func (githubProvider) FetchIssue(ctx context.Context, host, owner, repoName string, number int) (issueSummary, error) {
-	return fetchGitHubIssue(ctx, host, owner, repoName, number)
+func (githubProvider) FetchIssue(ctx context.Context, spec repospec.RepoSpec, number int) (issueSummary, error) {
+	return fetchGitHubIssue(ctx, spec.Host, spec.Owner, spec.Repo, number)
 }
 
-func (githubProvider) FetchPRs(ctx context.Context, host, owner, repoName string) ([]prSummary, error) {
-	return fetchGitHubPRs(ctx, host, owner, repoName)
+func (githubProvider) FetchMRs(ctx context.Context, spec repospec.RepoSpec) ([]prSummary, error) {
+	return fetchGitHubPRs(ctx, spec.Host, spec.Owner, spec.Repo)
 }
 
-func (githubProvider) FetchPR(ctx context.Context, host, owner, repoName string, number int) (prSummary, error) {
-	return fetchGitHubPR(ctx, host, owner, repoName, number)
+func (githubProvider) FetchMR(ctx context.Context, spec repospec.RepoSpec, number int) (prSummary, error) {
+	return fetchGitHubPR(ctx, spec.Host, spec.Owner, spec.Repo, number)
 }
 
-var providers = map[string]provider{
+func (githubProvider) BuildIssueURL(spec repospec.RepoSpec, number int) string {
+	return fmt.Sprintf("https://%s/%s/%s/issues/%d", spec.Host, spec.Owner, spec.Repo, number)
+}
+
+func (githubProvider) BuildMRURL(spec repospec.RepoSpec, number int) string {
+	return fmt.Sprintf("https://%s/%s/%s/pull/%d", spec.Host, spec.Owner, spec.Repo, number)
+}
+
+var providers = map[string]Provider{
 	"github": githubProvider{},
 }
 
-func providerByName(name string) (provider, error) {
+func ProviderByName(name string) (Provider, error) {
 	key := strings.ToLower(strings.TrimSpace(name))
 	if key == "" {
 		return nil, fmt.Errorf("provider is required")
@@ -52,7 +76,7 @@ func providerByName(name string) (provider, error) {
 	return p, nil
 }
 
-func providerNameForHost(host string) string {
+func ProviderNameForHost(host string) string {
 	lower := strings.ToLower(strings.TrimSpace(host))
 	if strings.Contains(lower, "gitlab") {
 		return "gitlab"
@@ -61,4 +85,8 @@ func providerNameForHost(host string) string {
 		return "bitbucket"
 	}
 	return "github"
+}
+
+func RegisterProvider(name string, p Provider) {
+	providers[strings.ToLower(name)] = p
 }
