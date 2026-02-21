@@ -35,7 +35,7 @@ func TestApply_NoPromptRejectsWorkspaceRemove(t *testing.T) {
 	if _, err := create.CreateWorkspace(ctx, rootDir, "WS-1", workspace.Metadata{Mode: workspace.MetadataModeRepo}); err != nil {
 		t.Fatalf("create workspace: %v", err)
 	}
-	if _, err := workspace.AddWithBranch(ctx, rootDir, "WS-1", repoSpec, "", "main", "", true); err != nil {
+	if _, err := workspace.AddWithBranch(ctx, rootDir, "WS-1", repoSpec, "", "main", "", "", true); err != nil {
 		t.Fatalf("workspace add: %v", err)
 	}
 	worktreePath := workspace.WorktreePath(rootDir, "WS-1", "repo")
@@ -82,7 +82,7 @@ func TestApply_ConfirmedRemovesDirtyWorkspace(t *testing.T) {
 	if _, err := create.CreateWorkspace(ctx, rootDir, "WS-1", workspace.Metadata{Mode: workspace.MetadataModeRepo}); err != nil {
 		t.Fatalf("create workspace: %v", err)
 	}
-	if _, err := workspace.AddWithBranch(ctx, rootDir, "WS-1", repoSpec, "", "main", "", true); err != nil {
+	if _, err := workspace.AddWithBranch(ctx, rootDir, "WS-1", repoSpec, "", "main", "", "", true); err != nil {
 		t.Fatalf("workspace add: %v", err)
 	}
 	worktreePath := workspace.WorktreePath(rootDir, "WS-1", "repo")

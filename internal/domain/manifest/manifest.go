@@ -26,13 +26,20 @@ type Workspace struct {
 	Repos       []Repo `yaml:"repos"`
 }
 
+type PresetRepo struct {
+	Repo     string `yaml:"repo"`
+	Provider string `yaml:"provider,omitempty"`
+	BasePath string `yaml:"base_path,omitempty"`
+	ApiURL   string `yaml:"api_url,omitempty"`
+}
+
 type Preset struct {
-	Repos []string `yaml:"repos"`
+	Repos []PresetRepo `yaml:"repos"`
 }
 
 func (p *Preset) UnmarshalYAML(value *yaml.Node) error {
 	type rawPreset struct {
-		Repos []string `yaml:"repos"`
+		Repos []PresetRepo `yaml:"repos"`
 	}
 	var direct rawPreset
 	if err := value.Decode(&direct); err == nil && len(direct.Repos) > 0 {
@@ -40,17 +47,15 @@ func (p *Preset) UnmarshalYAML(value *yaml.Node) error {
 		return nil
 	}
 
-	var legacy struct {
-		Repos []struct {
-			Repo string `yaml:"repo"`
-		} `yaml:"repos"`
+	var stringPreset struct {
+		Repos []string `yaml:"repos"`
 	}
-	if err := value.Decode(&legacy); err == nil && len(legacy.Repos) > 0 {
-		for _, item := range legacy.Repos {
-			if strings.TrimSpace(item.Repo) == "" {
+	if err := value.Decode(&stringPreset); err == nil && len(stringPreset.Repos) > 0 {
+		for _, s := range stringPreset.Repos {
+			if strings.TrimSpace(s) == "" {
 				continue
 			}
-			p.Repos = append(p.Repos, item.Repo)
+			p.Repos = append(p.Repos, PresetRepo{Repo: s})
 		}
 		return nil
 	}

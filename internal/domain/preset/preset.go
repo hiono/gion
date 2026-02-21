@@ -43,6 +43,7 @@ func ValidateName(name string) error {
 }
 
 // NormalizeRepos trims and de-duplicates repo specs while preserving order.
+// Deprecated: Use NormalizePresetRepos for manifest.PresetRepo support.
 func NormalizeRepos(repos []string) []string {
 	seen := make(map[string]struct{})
 	var out []string
@@ -56,6 +57,26 @@ func NormalizeRepos(repos []string) []string {
 		}
 		seen[trimmed] = struct{}{}
 		out = append(out, trimmed)
+	}
+	return out
+}
+
+// NormalizePresetRepos trims and de-duplicates PresetRepo entries while preserving order.
+func NormalizePresetRepos(repos []manifest.PresetRepo) []manifest.PresetRepo {
+	seen := make(map[string]struct{})
+	var out []manifest.PresetRepo
+	for _, repo := range repos {
+		trimmed := strings.TrimSpace(repo.Repo)
+		if trimmed == "" {
+			continue
+		}
+		repo.Repo = trimmed
+		key := repo.Repo
+		if _, ok := seen[key]; ok {
+			continue
+		}
+		seen[key] = struct{}{}
+		out = append(out, repo)
 	}
 	return out
 }

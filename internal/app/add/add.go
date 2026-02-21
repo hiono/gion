@@ -44,7 +44,7 @@ func AddRepo(ctx context.Context, rootDir, workspaceID, repoKey, alias, branch, 
 		}
 	}
 
-	added, err := workspace.AddWithBranch(ctx, rootDir, workspaceID, repoSpec, alias, branch, baseRef, fetch)
+	added, err := workspace.AddWithBranch(ctx, rootDir, workspaceID, repoSpec, alias, branch, baseRef, "", fetch)
 	if err != nil {
 		return workspace.Repo{}, false, "", err
 	}

@@ -18,8 +18,13 @@ func StorePath(rootDir string, spec repospec.Spec) string {
 
 // Normalize trims and validates a repo spec, returning the spec and trimmed input.
 func Normalize(input string) (repospec.Spec, string, error) {
+	return NormalizeWithBasePath(input, "")
+}
+
+// NormalizeWithBasePath trims and validates a repo spec with base_path support.
+func NormalizeWithBasePath(input, basePath string) (repospec.Spec, string, error) {
 	trimmed := strings.TrimSpace(input)
-	spec, err := repospec.Normalize(trimmed)
+	spec, err := repospec.NormalizeWithBasePath(trimmed, basePath)
 	if err != nil {
 		return repospec.Spec{}, "", err
 	}

@@ -53,7 +53,7 @@ func TestRepoRemoveFailsWhenWorkspaceUsesRepo(t *testing.T) {
 	if _, err := workspace.New(ctx, rootDir, "WS-1"); err != nil {
 		t.Fatalf("workspace new: %v", err)
 	}
-	if _, err := workspace.Add(ctx, rootDir, "WS-1", repoSpec, "", true); err != nil {
+	if _, err := workspace.Add(ctx, rootDir, "WS-1", repoSpec, "", "", true); err != nil {
 		t.Fatalf("workspace add: %v", err)
 	}
 

@@ -193,7 +193,11 @@ func runManifestAdd(ctx context.Context, rootDir string, args []string, globalNo
 			if !ok {
 				return nil, fmt.Errorf("preset not found: %s", name)
 			}
-			return append([]string(nil), tmpl.Repos...), nil
+			repos := make([]string, len(tmpl.Repos))
+			for i, r := range tmpl.Repos {
+				repos[i] = r.Repo
+			}
+			return repos, nil
 		}
 		validateBranch := func(v string) error {
 			return workspace.ValidateBranchName(ctx, v)
@@ -280,7 +284,7 @@ func runManifestAdd(ctx context.Context, rootDir string, args []string, globalNo
 			r.Bullet("branches")
 			var branchLines []string
 			for i, repoSpec := range tmpl.Repos {
-				branchLines = append(branchLines, fmt.Sprintf("%s: %s", displayRepoName(repoSpec), branches[i]))
+				branchLines = append(branchLines, fmt.Sprintf("%s: %s", displayRepoName(repoSpec.Repo), branches[i]))
 			}
 			renderTreeLines(r, branchLines, treeLineNormal)
 		}
@@ -413,7 +417,7 @@ func manifestAddPresetWithFile(ctx context.Context, rootDir, presetName, workspa
 
 	var repos []manifest.Repo
 	for i, repoSpec := range tmpl.Repos {
-		spec, _, err := repo.Normalize(repoSpec)
+		spec, _, err := repo.NormalizeWithBasePath(repoSpec.Repo, repoSpec.BasePath)
 		if err != nil {
 			return err
 		}

@@ -96,7 +96,7 @@ func TestSave(t *testing.T) {
 	if err != nil {
 		t.Fatalf("load %s: %v", manifest.FileName, err)
 	}
-	file.Presets["new"] = Preset{Repos: []string{"git@github.com:org/new.git"}}
+	file.Presets["new"] = Preset{Repos: []manifest.PresetRepo{{Repo: "git@github.com:org/new.git"}}}
 	if err := Save(rootDir, file); err != nil {
 		t.Fatalf("save %s: %v", manifest.FileName, err)
 	}

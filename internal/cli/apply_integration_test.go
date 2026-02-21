@@ -34,7 +34,7 @@ func TestApply_BranchRenameInPlace_SucceedsWithDirtyWorktree(t *testing.T) {
 	if _, err := create.CreateWorkspace(ctx, rootDir, "WS-1", workspace.Metadata{Mode: workspace.MetadataModeRepo}); err != nil {
 		t.Fatalf("create workspace: %v", err)
 	}
-	if _, err := workspace.Add(ctx, rootDir, "WS-1", repoSpec, "", true); err != nil {
+	if _, err := workspace.Add(ctx, rootDir, "WS-1", repoSpec, "", "", true); err != nil {
 		t.Fatalf("workspace add: %v", err)
 	}
 	worktreePath := workspace.WorktreePath(rootDir, "WS-1", "repo")

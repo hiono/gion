@@ -161,7 +161,7 @@ func applyReviewRepoAdd(ctx context.Context, rootDir, workspaceID string, repoEn
 		}
 	}
 
-	_, err = workspace.AddWithTrackingBranch(ctx, rootDir, workspaceID, repoSpec, repoEntry.Alias, branch, remoteRef, false)
+	_, err = workspace.AddWithTrackingBranch(ctx, rootDir, workspaceID, repoSpec, repoEntry.Alias, branch, remoteRef, "", false)
 	return err
 }
 

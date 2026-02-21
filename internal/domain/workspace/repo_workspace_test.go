@@ -65,7 +65,7 @@ func TestRepoGetWorkspaceAddRemove(t *testing.T) {
 	if _, err := workspace.New(ctx, rootDir, "WS-1"); err != nil {
 		t.Fatalf("workspace new: %v", err)
 	}
-	if _, err := workspace.Add(ctx, rootDir, "WS-1", repoSpec, "", true); err != nil {
+	if _, err := workspace.Add(ctx, rootDir, "WS-1", repoSpec, "", "", true); err != nil {
 		t.Fatalf("workspace add: %v", err)
 	}
 	worktreePath := workspace.WorktreePath(rootDir, "WS-1", "repo")
@@ -133,7 +133,7 @@ func TestWorkspaceAddSkipsFetchWhenUpToDate(t *testing.T) {
 	if _, err := workspace.New(ctx, rootDir, "WS-1"); err != nil {
 		t.Fatalf("workspace new: %v", err)
 	}
-	if _, err := workspace.Add(ctx, rootDir, "WS-1", repoSpec, "", true); err != nil {
+	if _, err := workspace.Add(ctx, rootDir, "WS-1", repoSpec, "", "", true); err != nil {
 		t.Fatalf("workspace add: %v", err)
 	}
 
@@ -202,7 +202,7 @@ func TestWorkspaceAddFetchesEvenWithinGraceWhenFetchTrue(t *testing.T) {
 	if _, err := workspace.New(ctx, rootDir, "WS-1"); err != nil {
 		t.Fatalf("workspace new: %v", err)
 	}
-	if _, err := workspace.Add(ctx, rootDir, "WS-1", repoSpec, "", true); err != nil {
+	if _, err := workspace.Add(ctx, rootDir, "WS-1", repoSpec, "", "", true); err != nil {
 		t.Fatalf("workspace add: %v", err)
 	}
 
@@ -275,7 +275,7 @@ func TestWorkspaceAddTracksRemoteBranchWhenPresent(t *testing.T) {
 	if _, err := workspace.New(ctx, rootDir, "WS-1"); err != nil {
 		t.Fatalf("workspace new: %v", err)
 	}
-	if _, err := workspace.AddWithBranch(ctx, rootDir, "WS-1", repoSpec, "", "feature", "origin/main", true); err != nil {
+	if _, err := workspace.AddWithBranch(ctx, rootDir, "WS-1", repoSpec, "", "feature", "origin/main", "", true); err != nil {
 		t.Fatalf("workspace add: %v", err)
 	}
 

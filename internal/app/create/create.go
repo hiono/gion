@@ -30,9 +30,9 @@ func ApplyPreset(ctx context.Context, rootDir, workspaceID string, preset preset
 			branch = branches[i]
 		}
 		if step != nil {
-			step(repoSpec, i, total)
+			step(repoSpec.Repo, i, total)
 		}
-		if _, err := workspace.AddWithBranch(ctx, rootDir, workspaceID, repoSpec, "", branch, "", false); err != nil {
+		if _, err := workspace.AddWithBranch(ctx, rootDir, workspaceID, repoSpec.Repo, "", branch, "", repoSpec.BasePath, false); err != nil {
 			return err
 		}
 	}

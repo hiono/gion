@@ -10,15 +10,15 @@ import (
 	"github.com/tasuku43/gion/internal/infra/paths"
 )
 
-func Add(ctx context.Context, rootDir, workspaceID, repoSpec, alias string, fetch bool) (Repo, error) {
-	return AddWithBranch(ctx, rootDir, workspaceID, repoSpec, alias, workspaceID, "", fetch)
+func Add(ctx context.Context, rootDir, workspaceID, repoSpec, alias, basePath string, fetch bool) (Repo, error) {
+	return AddWithBranch(ctx, rootDir, workspaceID, repoSpec, alias, workspaceID, "", basePath, fetch)
 }
 
-func AddWithBranch(ctx context.Context, rootDir, workspaceID, repoSpec, alias, branch, baseRef string, fetch bool) (Repo, error) {
+func AddWithBranch(ctx context.Context, rootDir, workspaceID, repoSpec, alias, branch, baseRef, basePath string, fetch bool) (Repo, error) {
 	if err := validateBranchName(ctx, branch); err != nil {
 		return Repo{}, err
 	}
-	prep, err := prepareAdd(ctx, rootDir, workspaceID, repoSpec, alias, fetch)
+	prep, err := prepareAdd(ctx, rootDir, workspaceID, repoSpec, alias, basePath, fetch)
 	if err != nil {
 		return Repo{}, err
 	}
@@ -77,14 +77,14 @@ func AddWithBranch(ctx context.Context, rootDir, workspaceID, repoSpec, alias, b
 	return repoEntry, nil
 }
 
-func AddWithTrackingBranch(ctx context.Context, rootDir, workspaceID, repoSpec, alias, branch, remoteRef string, fetch bool) (Repo, error) {
+func AddWithTrackingBranch(ctx context.Context, rootDir, workspaceID, repoSpec, alias, branch, remoteRef, basePath string, fetch bool) (Repo, error) {
 	if err := validateBranchName(ctx, branch); err != nil {
 		return Repo{}, err
 	}
 	if strings.TrimSpace(remoteRef) == "" {
 		return Repo{}, fmt.Errorf("remote ref is required")
 	}
-	prep, err := prepareAdd(ctx, rootDir, workspaceID, repoSpec, alias, fetch)
+	prep, err := prepareAdd(ctx, rootDir, workspaceID, repoSpec, alias, basePath, fetch)
 	if err != nil {
 		return Repo{}, err
 	}
@@ -127,7 +127,7 @@ type addPrep struct {
 	worktreePath string
 }
 
-func prepareAdd(ctx context.Context, rootDir, workspaceID, repoSpec, alias string, fetch bool) (addPrep, error) {
+func prepareAdd(ctx context.Context, rootDir, workspaceID, repoSpec, alias, basePath string, fetch bool) (addPrep, error) {
 	if err := validateWorkspaceID(ctx, workspaceID); err != nil {
 		return addPrep{}, err
 	}
@@ -142,7 +142,7 @@ func prepareAdd(ctx context.Context, rootDir, workspaceID, repoSpec, alias strin
 		return addPrep{}, fmt.Errorf("workspace does not exist: %s", wsDir)
 	}
 
-	spec, _, err := repo.Normalize(repoSpec)
+	spec, _, err := repo.NormalizeWithBasePath(repoSpec, basePath)
 	if err != nil {
 		return addPrep{}, err
 	}

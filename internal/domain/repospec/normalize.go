@@ -8,6 +8,10 @@ func Normalize(input string) (Spec, error) {
 	return corerepospec.Normalize(input)
 }
 
+func NormalizeWithBasePath(input, basePath string) (Spec, error) {
+	return corerepospec.NormalizeWithBasePath(input, basePath)
+}
+
 func DisplaySpec(input string) string {
 	return corerepospec.DisplaySpec(input)
 }

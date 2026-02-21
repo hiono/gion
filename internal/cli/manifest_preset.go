@@ -91,7 +91,7 @@ func runManifestPresetList(ctx context.Context, rootDir string, args []string) e
 		renderer.Bullet(name)
 		var reposDisplay []string
 		for _, repoSpec := range entry.Repos {
-			reposDisplay = append(reposDisplay, displayPresetRepo(repoSpec))
+			reposDisplay = append(reposDisplay, displayPresetRepo(repoSpec.Repo))
 		}
 		renderTreeLines(renderer, reposDisplay, treeLineNormal)
 	}
@@ -216,7 +216,11 @@ func runManifestPresetAdd(ctx context.Context, rootDir string, args []string, no
 	if file.Presets == nil {
 		file.Presets = map[string]preset.Preset{}
 	}
-	file.Presets[name] = preset.Preset{Repos: repoSpecs}
+	var presetRepos []manifest.PresetRepo
+	for _, spec := range repoSpecs {
+		presetRepos = append(presetRepos, manifest.PresetRepo{Repo: spec})
+	}
+	file.Presets[name] = preset.Preset{Repos: presetRepos}
 
 	if err := preset.Save(rootDir, file); err != nil {
 		return err
