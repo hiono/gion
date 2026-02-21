@@ -32,3 +32,5 @@ require (
 	golang.org/x/sys v0.36.0 // indirect
 	golang.org/x/text v0.3.8 // indirect
 )
+
+replace github.com/tasuku43/gion-core => github.com/hiono/gion-core v0.0.0-20260221104816-a684defe4545
