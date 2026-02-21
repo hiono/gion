@@ -20,10 +20,32 @@ type ParsedURL struct {
 
 var (
 	sshSchemeRegex = regexp.MustCompile(`^ssh://(?:([^@]+)@)?([^:/]+)(?::(\d+))?/(.+)$`)
-	gitSSHRegex    = regexp.MustCompile(`^(?:([^@]+)@)?([^:]+):(.+)$`)
+	gitSSHRegex    = regexp.MustCompile(`^(?:([^@]+)@)?([^:]+):(?:(\d+):)?(.+)$`)
 	httpsRegex     = regexp.MustCompile(`^https?://([^:/]+)(?::(\d+))?/(.+)$`)
 	gitSchemeRegex = regexp.MustCompile(`^git://([^:/]+)(?::(\d+))?/(.+)$`)
 )
+
+func ParseWithBasePath(repoURL, basePath string) (ParsedURL, error) {
+	parsed, err := Parse(repoURL)
+	if err != nil {
+		return ParsedURL{}, err
+	}
+
+	if basePath == "" {
+		return parsed, nil
+	}
+
+	basePathClean := strings.Trim(basePath, "/")
+	if parsed.Namespace != "" && strings.HasPrefix(parsed.Namespace, basePathClean+"/") {
+		parsed.Namespace = strings.TrimPrefix(parsed.Namespace, basePathClean+"/")
+	} else if parsed.Namespace == basePathClean {
+		parsed.Namespace = ""
+	}
+
+	parsed.RepoKey = buildRepoKey(parsed.Host, parsed.Namespace, parsed.Project)
+
+	return parsed, nil
+}
 
 func Parse(repoURL string) (ParsedURL, error) {
 	repoURL = strings.TrimSpace(repoURL)
@@ -87,14 +109,23 @@ func parseGitSSH(repoURL string) (ParsedURL, error) {
 	}
 
 	host := matches[2]
-	path := matches[3]
+	path := matches[4]
+	port := 0
+
+	if matches[3] != "" {
+		var err error
+		port, err = strconv.Atoi(matches[3])
+		if err != nil || port < 1 || port > 65535 {
+			return ParsedURL{}, fmt.Errorf("invalid port: %s (must be 1-65535)", matches[3])
+		}
+	}
 
 	namespace, project := splitNamespaceProject(path)
 
 	return ParsedURL{
 		Scheme:    "ssh",
 		Host:      host,
-		Port:      0,
+		Port:      port,
 		Namespace: namespace,
 		Project:   project,
 		Provider:  string(DetectProvider(host)),

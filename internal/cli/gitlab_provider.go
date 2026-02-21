@@ -37,7 +37,15 @@ func (gitlabProvider) BuildIssueURL(spec repospec.RepoSpec, number int) string {
 	if spec.Namespace != "" {
 		projectPath = spec.Namespace + "/" + spec.Project
 	}
-	return fmt.Sprintf("https://%s/%s/-/issues/%d", spec.Host, projectPath, number)
+	host := spec.Host
+	if spec.Port > 0 && spec.Port != 443 && spec.Port != 80 {
+		host = fmt.Sprintf("%s:%d", spec.Host, spec.Port)
+	}
+	basePath := strings.Trim(spec.BasePath, "/")
+	if basePath != "" {
+		return fmt.Sprintf("https://%s/%s/%s/-/issues/%d", host, basePath, projectPath, number)
+	}
+	return fmt.Sprintf("https://%s/%s/-/issues/%d", host, projectPath, number)
 }
 
 func (gitlabProvider) BuildMRURL(spec repospec.RepoSpec, number int) string {
@@ -45,7 +53,15 @@ func (gitlabProvider) BuildMRURL(spec repospec.RepoSpec, number int) string {
 	if spec.Namespace != "" {
 		projectPath = spec.Namespace + "/" + spec.Project
 	}
-	return fmt.Sprintf("https://%s/%s/-/merge_requests/%d", spec.Host, projectPath, number)
+	host := spec.Host
+	if spec.Port > 0 && spec.Port != 443 && spec.Port != 80 {
+		host = fmt.Sprintf("%s:%d", spec.Host, spec.Port)
+	}
+	basePath := strings.Trim(spec.BasePath, "/")
+	if basePath != "" {
+		return fmt.Sprintf("https://%s/%s/%s/-/merge_requests/%d", host, basePath, projectPath, number)
+	}
+	return fmt.Sprintf("https://%s/%s/-/merge_requests/%d", host, projectPath, number)
 }
 
 func init() {
@@ -184,6 +200,19 @@ func runGlabAPICommand(ctx context.Context, host, endpoint string) ([]byte, erro
 	args := []string{"api", endpoint}
 	if host != "" && host != "gitlab.com" {
 		args = append([]string{"--hostname", host}, args...)
+	}
+
+	stdout, _, err := defaultExecutor.Execute(ctx, "glab", args...)
+	if err != nil {
+		return nil, err
+	}
+	return stdout, nil
+}
+
+func runGlabAPICommandWithApiURL(ctx context.Context, apiURL, endpoint string) ([]byte, error) {
+	args := []string{"api", endpoint}
+	if apiURL != "" {
+		args = append([]string{"--api-host", apiURL}, args...)
 	}
 
 	stdout, _, err := defaultExecutor.Execute(ctx, "glab", args...)

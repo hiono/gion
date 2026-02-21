@@ -209,3 +209,204 @@ func TestSplitNamespaceProject(t *testing.T) {
 		})
 	}
 }
+
+func TestParseWithBasePath(t *testing.T) {
+	tests := []struct {
+		name      string
+		input     string
+		basePath  string
+		want      ParsedURL
+		wantError bool
+	}{
+		{
+			name:     "HTTPS with base_path excluded",
+			input:    "https://host.com/git/group/project.git",
+			basePath: "/git",
+			want: ParsedURL{
+				Scheme:    "https",
+				Host:      "host.com",
+				Port:      0,
+				Namespace: "group",
+				Project:   "project",
+				Provider:  "github",
+				RepoKey:   "host.com/group/project",
+			},
+		},
+		{
+			name:     "HTTPS with nested groups and base_path",
+			input:    "https://host.com/git/a/b/c/project.git",
+			basePath: "/git",
+			want: ParsedURL{
+				Scheme:    "https",
+				Host:      "host.com",
+				Port:      0,
+				Namespace: "a/b/c",
+				Project:   "project",
+				Provider:  "github",
+				RepoKey:   "host.com/a/b/c/project",
+			},
+		},
+		{
+			name:     "SSH ignores base_path",
+			input:    "git@host.com:group/project.git",
+			basePath: "/git",
+			want: ParsedURL{
+				Scheme:    "ssh",
+				Host:      "host.com",
+				Port:      0,
+				Namespace: "group",
+				Project:   "project",
+				Provider:  "github",
+				RepoKey:   "host.com/group/project",
+			},
+		},
+		{
+			name:     "No base_path - unchanged",
+			input:    "https://host.com/group/project.git",
+			basePath: "",
+			want: ParsedURL{
+				Scheme:    "https",
+				Host:      "host.com",
+				Port:      0,
+				Namespace: "group",
+				Project:   "project",
+				Provider:  "github",
+				RepoKey:   "host.com/group/project",
+			},
+		},
+		{
+			name:     "SSH without port ignores base_path",
+			input:    "git@host.com:group/project.git",
+			basePath: "/git",
+			want: ParsedURL{
+				Scheme:    "ssh",
+				Host:      "host.com",
+				Port:      0,
+				Namespace: "group",
+				Project:   "project",
+				Provider:  "github",
+				RepoKey:   "host.com/group/project",
+			},
+		},
+		{
+			name:     "SSH without port nested groups ignores base_path",
+			input:    "git@host.com:a/b/c/project.git",
+			basePath: "/git",
+			want: ParsedURL{
+				Scheme:    "ssh",
+				Host:      "host.com",
+				Port:      0,
+				Namespace: "a/b/c",
+				Project:   "project",
+				Provider:  "github",
+				RepoKey:   "host.com/a/b/c/project",
+			},
+		},
+		{
+			name:     "SSH with port ignores base_path",
+			input:    "git@host.com:2222:group/project.git",
+			basePath: "/git",
+			want: ParsedURL{
+				Scheme:    "ssh",
+				Host:      "host.com",
+				Port:      2222,
+				Namespace: "group",
+				Project:   "project",
+				Provider:  "github",
+				RepoKey:   "host.com/group/project",
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got, err := ParseWithBasePath(tt.input, tt.basePath)
+			if tt.wantError {
+				if err == nil {
+					t.Errorf("ParseWithBasePath(%q, %q) expected error, got none", tt.input, tt.basePath)
+				}
+				return
+			}
+			if err != nil {
+				t.Errorf("ParseWithBasePath(%q, %q) unexpected error: %v", tt.input, tt.basePath, err)
+				return
+			}
+			if got != tt.want {
+				t.Errorf("ParseWithBasePath(%q, %q) = %+v, want %+v", tt.input, tt.basePath, got, tt.want)
+			}
+		})
+	}
+}
+
+func TestParseGitSSHWithPort(t *testing.T) {
+	tests := []struct {
+		name      string
+		input     string
+		want      ParsedURL
+		wantError bool
+	}{
+		{
+			name:  "Git SSH with port",
+			input: "git@host.com:2222:group/project.git",
+			want: ParsedURL{
+				Scheme:    "ssh",
+				Host:      "host.com",
+				Port:      2222,
+				Namespace: "group",
+				Project:   "project",
+				Provider:  "github",
+				RepoKey:   "host.com/group/project",
+			},
+		},
+		{
+			name:  "Git SSH with port and nested groups",
+			input: "git@host.com:2222:a/b/c/project.git",
+			want: ParsedURL{
+				Scheme:    "ssh",
+				Host:      "host.com",
+				Port:      2222,
+				Namespace: "a/b/c",
+				Project:   "project",
+				Provider:  "github",
+				RepoKey:   "host.com/a/b/c/project",
+			},
+		},
+		{
+			name:  "Git SSH without port",
+			input: "git@host.com:group/project.git",
+			want: ParsedURL{
+				Scheme:    "ssh",
+				Host:      "host.com",
+				Port:      0,
+				Namespace: "group",
+				Project:   "project",
+				Provider:  "github",
+				RepoKey:   "host.com/group/project",
+			},
+		},
+		{
+			name:      "Git SSH invalid port",
+			input:     "git@host.com:99999:group/project.git",
+			wantError: true,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got, err := Parse(tt.input)
+			if tt.wantError {
+				if err == nil {
+					t.Errorf("Parse(%q) expected error, got none", tt.input)
+				}
+				return
+			}
+			if err != nil {
+				t.Errorf("Parse(%q) unexpected error: %v", tt.input, err)
+				return
+			}
+			if got != tt.want {
+				t.Errorf("Parse(%q) = %+v, want %+v", tt.input, got, tt.want)
+			}
+		})
+	}
+}

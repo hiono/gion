@@ -40,3 +40,8 @@ func DisplayName(input string) string {
 func SpecFromKey(repoKey string) string {
 	return repospec.SpecFromKey(repoKey)
 }
+
+// SpecFromKeyWithBasePath converts a repo key with base_path support.
+func SpecFromKeyWithBasePath(repoKey, basePath string) (repospec.RepoSpec, error) {
+	return repospec.SpecFromKeyWithBasePath(repoKey, basePath)
+}

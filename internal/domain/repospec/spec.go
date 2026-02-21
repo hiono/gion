@@ -26,6 +26,8 @@ type RepoSpec struct {
 	Project   string
 	Port      int
 	Scheme    string
+	BasePath  string
+	ApiURL    string
 }
 
 // Owner vs Namespace semantics:
@@ -53,11 +55,24 @@ func (s RepoSpec) ToCoreSpec() corerepospec.Spec {
 
 func FromCoreSpec(core corerepospec.Spec) RepoSpec {
 	return RepoSpec{
-		Host:    core.Host,
-		Owner:   core.Owner,
-		Repo:    core.Repo,
-		RepoKey: core.RepoKey,
+		Host:      core.Host,
+		Owner:     core.Owner,
+		Repo:      core.Repo,
+		RepoKey:   core.RepoKey,
+		Namespace: core.Owner,
+		Project:   core.Repo,
 	}
+}
+
+func SpecFromKeyWithBasePath(repoKey string, basePath string) (RepoSpec, error) {
+	core, err := corerepospec.NormalizeWithBasePath(repoKey, basePath)
+	if err != nil {
+		return RepoSpec{}, err
+	}
+	spec := FromCoreSpec(core)
+	spec.Provider = DetectProvider(spec.Host)
+	spec.BasePath = basePath
+	return spec, nil
 }
 
 func DetectProvider(host string) Provider {

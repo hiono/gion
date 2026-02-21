@@ -71,6 +71,9 @@ type Repo struct {
 	Port      int               `yaml:"port,omitempty"`
 	Scheme    string            `yaml:"scheme,omitempty"`
 	Remotes   map[string]string `yaml:"remotes,omitempty"`
+
+	BasePath string `yaml:"base_path,omitempty"`
+	ApiURL   string `yaml:"api_url,omitempty"`
 }
 
 func Path(rootDir string) string {
