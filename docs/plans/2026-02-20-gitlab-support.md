@@ -364,6 +364,35 @@ repos:
 | `internal/cli/gitlab_provider.go` | Port-aware URL building, api_url support |
 | `gion-core/repospec/normalize.go` | NormalizeWithBasePath function |
 
+### Preset Schema Enhancement
+
+Extended `PresetRepo` struct to support base_path at preset level:
+
+```yaml
+presets:
+  tfu:
+    repos:
+      # Full struct form
+      - repo: https://host/gitlab/group/project.git
+        base_path: /gitlab
+        provider: gitlab
+        api_url: https://host/gitlab
+        
+      # Simple string form (backward compatible)
+      - git@host:2222:group/project.git
+```
+
+**Backward Compatibility**: String repos are automatically converted to `PresetRepo` with empty `base_path`.
+
+### Files Changed (Additional)
+
+| File | Change |
+|------|--------|
+| `internal/domain/manifest/manifest.go` | PresetRepo struct with UnmarshalYAML |
+| `internal/domain/preset/preset.go` | NormalizeRepos handles PresetRepo |
+| `internal/domain/workspace/add.go` | basePath parameter added |
+| `internal/domain/repo/paths.go` | NormalizeWithBasePath added |
+
 ### gion-core Fork
 
 Updated fork at `github.com/hiono/gion-core` with:
