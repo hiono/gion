@@ -1,6 +1,11 @@
 package repospec
 
-import corerepospec "github.com/tasuku43/gion-core/repospec"
+import (
+	"os"
+	"strings"
+
+	corerepospec "github.com/tasuku43/gion-core/repospec"
+)
 
 type Provider string
 
@@ -22,6 +27,12 @@ type RepoSpec struct {
 	Port      int
 	Scheme    string
 }
+
+// Owner vs Namespace semantics:
+//   - GitHub: uses Owner (single user/org) + Repo
+//   - GitLab: uses Namespace (group/subgroup path, variable length) + Project/Repo
+//   - When converting from ParsedURL, set both Owner and Namespace to the same value
+//     for compatibility, but providers use the appropriate field for their semantics.
 
 func (s RepoSpec) IsGitHub() bool {
 	return s.Provider == ProviderGitHub
@@ -58,6 +69,9 @@ func DetectProvider(host string) Provider {
 	case containsProvider(host, "github"):
 		return ProviderGitHub
 	default:
+		if defaultProvider := os.Getenv("GION_DEFAULT_PROVIDER"); defaultProvider != "" {
+			return Provider(strings.ToLower(defaultProvider))
+		}
 		return ProviderGitHub
 	}
 }
@@ -65,14 +79,5 @@ func DetectProvider(host string) Provider {
 func containsProvider(host, name string) bool {
 	return len(host) >= len(name) && (host == name || host == name+".com" ||
 		(len(host) > len(name)+1 && host[len(host)-len(name)-1:] == "."+name) ||
-		containsSubstring(host, name))
-}
-
-func containsSubstring(s, substr string) bool {
-	for i := 0; i <= len(s)-len(substr); i++ {
-		if s[i:i+len(substr)] == substr {
-			return true
-		}
-	}
-	return false
+		strings.Contains(host, name))
 }

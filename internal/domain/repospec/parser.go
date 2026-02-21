@@ -62,8 +62,8 @@ func parseSSHScheme(repoURL string) (ParsedURL, error) {
 	if matches[3] != "" {
 		var err error
 		port, err = strconv.Atoi(matches[3])
-		if err != nil {
-			return ParsedURL{}, fmt.Errorf("invalid port: %s", matches[3])
+		if err != nil || port < 1 || port > 65535 {
+			return ParsedURL{}, fmt.Errorf("invalid port: %s (must be 1-65535)", matches[3])
 		}
 	}
 
@@ -114,8 +114,8 @@ func parseHTTPS(repoURL string) (ParsedURL, error) {
 	if matches[2] != "" {
 		var err error
 		port, err = strconv.Atoi(matches[2])
-		if err != nil {
-			return ParsedURL{}, fmt.Errorf("invalid port: %s", matches[2])
+		if err != nil || port < 1 || port > 65535 {
+			return ParsedURL{}, fmt.Errorf("invalid port: %s (must be 1-65535)", matches[2])
 		}
 	}
 
@@ -144,8 +144,8 @@ func parseGitScheme(repoURL string) (ParsedURL, error) {
 	if matches[2] != "" {
 		var err error
 		port, err = strconv.Atoi(matches[2])
-		if err != nil {
-			return ParsedURL{}, fmt.Errorf("invalid port: %s", matches[2])
+		if err != nil || port < 1 || port > 65535 {
+			return ParsedURL{}, fmt.Errorf("invalid port: %s (must be 1-65535)", matches[2])
 		}
 	}
 

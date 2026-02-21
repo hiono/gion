@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/url"
+	"strings"
 
 	"github.com/tasuku43/gion/internal/domain/repospec"
 )
@@ -32,11 +33,19 @@ func (gitlabProvider) FetchMR(ctx context.Context, spec repospec.RepoSpec, numbe
 }
 
 func (gitlabProvider) BuildIssueURL(spec repospec.RepoSpec, number int) string {
-	return fmt.Sprintf("https://%s/%s/-/issues/%d", spec.Host, spec.Namespace, number)
+	projectPath := spec.Project
+	if spec.Namespace != "" {
+		projectPath = spec.Namespace + "/" + spec.Project
+	}
+	return fmt.Sprintf("https://%s/%s/-/issues/%d", spec.Host, projectPath, number)
 }
 
 func (gitlabProvider) BuildMRURL(spec repospec.RepoSpec, number int) string {
-	return fmt.Sprintf("https://%s/%s/-/merge_requests/%d", spec.Host, spec.Namespace, number)
+	projectPath := spec.Project
+	if spec.Namespace != "" {
+		projectPath = spec.Namespace + "/" + spec.Project
+	}
+	return fmt.Sprintf("https://%s/%s/-/merge_requests/%d", spec.Host, projectPath, number)
 }
 
 func init() {
@@ -48,6 +57,9 @@ func gitlabProjectPath(namespace, project string) string {
 }
 
 func fetchGitLabIssues(ctx context.Context, host, namespace, repo string) ([]issueSummary, error) {
+	if strings.TrimSpace(namespace) == "" || strings.TrimSpace(repo) == "" {
+		return nil, fmt.Errorf("namespace/repo is required")
+	}
 	projectPath := gitlabProjectPath(namespace, repo)
 	endpoint := fmt.Sprintf("projects/%s/issues?state=opened&per_page=100", projectPath)
 
@@ -76,6 +88,9 @@ func fetchGitLabIssues(ctx context.Context, host, namespace, repo string) ([]iss
 }
 
 func fetchGitLabIssue(ctx context.Context, host, namespace, repo string, number int) (issueSummary, error) {
+	if strings.TrimSpace(namespace) == "" || strings.TrimSpace(repo) == "" {
+		return issueSummary{}, fmt.Errorf("namespace/repo is required")
+	}
 	projectPath := gitlabProjectPath(namespace, repo)
 	endpoint := fmt.Sprintf("projects/%s/issues/%d", projectPath, number)
 
@@ -100,6 +115,9 @@ func fetchGitLabIssue(ctx context.Context, host, namespace, repo string, number 
 }
 
 func fetchGitLabMRs(ctx context.Context, host, namespace, repo string) ([]prSummary, error) {
+	if strings.TrimSpace(namespace) == "" || strings.TrimSpace(repo) == "" {
+		return nil, fmt.Errorf("namespace/repo is required")
+	}
 	projectPath := gitlabProjectPath(namespace, repo)
 	endpoint := fmt.Sprintf("projects/%s/merge_requests?state=opened&per_page=100", projectPath)
 
@@ -132,6 +150,9 @@ func fetchGitLabMRs(ctx context.Context, host, namespace, repo string) ([]prSumm
 }
 
 func fetchGitLabMR(ctx context.Context, host, namespace, repo string, number int) (prSummary, error) {
+	if strings.TrimSpace(namespace) == "" || strings.TrimSpace(repo) == "" {
+		return prSummary{}, fmt.Errorf("namespace/repo is required")
+	}
 	projectPath := gitlabProjectPath(namespace, repo)
 	endpoint := fmt.Sprintf("projects/%s/merge_requests/%d", projectPath, number)
 
@@ -165,9 +186,9 @@ func runGlabAPICommand(ctx context.Context, host, endpoint string) ([]byte, erro
 		args = append([]string{"--hostname", host}, args...)
 	}
 
-	out, _, err := runExternalCommand(ctx, "glab", args)
+	stdout, _, err := defaultExecutor.Execute(ctx, "glab", args...)
 	if err != nil {
 		return nil, err
 	}
-	return []byte(out), nil
+	return stdout, nil
 }
