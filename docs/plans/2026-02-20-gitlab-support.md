@@ -309,3 +309,64 @@ glab api "projects/group%2Fsubgroup%2Fproject/merge_requests?state=opened"
 
 - `internal/domain/remote/manager_test.go` - Extended tests
 - `internal/cli/gitlab_provider_test.go` - New test file
+
+## Subdirectory GitLab Support (2026-02-22)
+
+### Problem
+
+GitLab instances configured with `external_url "http://example.com/gitlab"` serve all URLs with a subdirectory prefix:
+
+| URL Type | Format |
+|----------|--------|
+| SSH Clone | `git@host:namespace/project.git` (no base_path) |
+| HTTPS Clone | `https://host/gitlab/namespace/project.git` |
+| Web UI | `https://host/gitlab/namespace/project` |
+| API | `https://host/gitlab/api/v4/...` |
+
+### Solution
+
+Added `base_path` and `api_url` fields to Repo struct:
+
+```yaml
+repos:
+  # SSH (recommended) - no base_path needed
+  - repo_key: git@host:port:namespace/project.git
+    provider: gitlab
+    
+  # HTTPS - base_path required
+  - repo_key: https://host/gitlab/namespace/project.git
+    provider: gitlab
+    base_path: /gitlab
+    api_url: https://host/gitlab
+```
+
+### Key Implementation Details
+
+| Field | Purpose |
+|-------|---------|
+| `base_path` | Strips subdirectory prefix from HTTPS URLs during parsing |
+| `api_url` | Full API endpoint URL for glab CLI integration |
+
+### URL Building Rules
+
+1. **SSH URLs ignore base_path** - GitLab spec doesn't include subdirectory in SSH URLs
+2. **HTTPS URLs use base_path** - Strips prefix from namespace, keeps for URL building
+3. **API calls use api_url** - glab `--api-host` flag for subdirectory instances
+4. **Port handling** - Custom ports included in Web URLs
+
+### Files Changed
+
+| File | Change |
+|------|--------|
+| `internal/domain/manifest/manifest.go` | Added BasePath, ApiURL fields |
+| `internal/domain/repospec/spec.go` | Added BasePath, ApiURL to RepoSpec |
+| `internal/domain/repospec/parser.go` | ParseWithBasePath function |
+| `internal/cli/gitlab_provider.go` | Port-aware URL building, api_url support |
+| `gion-core/repospec/normalize.go` | NormalizeWithBasePath function |
+
+### gion-core Fork
+
+Updated fork at `github.com/hiono/gion-core` with:
+- `NormalizeWithBasePath(input, basePath string) (Spec, error)`
+- SSH URL base_path ignoring
+- Port boundary tests (1, 65535)
