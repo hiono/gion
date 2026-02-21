@@ -35,6 +35,24 @@ func TestGitLabProvider_BuildIssueURL(t *testing.T) {
 			number:  789,
 			wantURL: "https://gitlab.example.com/org/team/repo/-/issues/789",
 		},
+		{
+			name:    "custom port",
+			spec:    repospec.RepoSpec{Host: "gitlab.example.com", Port: 8080, Namespace: "org/team", Project: "repo"},
+			number:  100,
+			wantURL: "https://gitlab.example.com:8080/org/team/repo/-/issues/100",
+		},
+		{
+			name:    "with base_path",
+			spec:    repospec.RepoSpec{Host: "example.com", BasePath: "/gitlab", Namespace: "org/team", Project: "repo"},
+			number:  200,
+			wantURL: "https://example.com/gitlab/org/team/repo/-/issues/200",
+		},
+		{
+			name:    "custom port with base_path",
+			spec:    repospec.RepoSpec{Host: "example.com", Port: 8443, BasePath: "/gitlab", Namespace: "org/team", Project: "repo"},
+			number:  300,
+			wantURL: "https://example.com:8443/gitlab/org/team/repo/-/issues/300",
+		},
 	}
 
 	for _, tt := range tests {
@@ -67,6 +85,18 @@ func TestGitLabProvider_BuildMRURL(t *testing.T) {
 			spec:    repospec.RepoSpec{Host: "gitlab.com", Namespace: "", Project: "project"},
 			number:  200,
 			wantURL: "https://gitlab.com/project/-/merge_requests/200",
+		},
+		{
+			name:    "custom port",
+			spec:    repospec.RepoSpec{Host: "gitlab.example.com", Port: 8080, Namespace: "org/team", Project: "repo"},
+			number:  100,
+			wantURL: "https://gitlab.example.com:8080/org/team/repo/-/merge_requests/100",
+		},
+		{
+			name:    "with base_path",
+			spec:    repospec.RepoSpec{Host: "example.com", BasePath: "/gitlab", Namespace: "org/team", Project: "repo"},
+			number:  200,
+			wantURL: "https://example.com/gitlab/org/team/repo/-/merge_requests/200",
 		},
 	}
 

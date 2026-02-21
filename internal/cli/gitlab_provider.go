@@ -17,19 +17,34 @@ func (gitlabProvider) Name() string {
 }
 
 func (gitlabProvider) FetchIssues(ctx context.Context, spec repospec.RepoSpec) ([]issueSummary, error) {
-	return fetchGitLabIssues(ctx, spec.Host, spec.Namespace, spec.Repo)
+	apiEndpoint := resolveGitLabAPIEndpoint(spec)
+	return fetchGitLabIssues(ctx, apiEndpoint, spec.Namespace, spec.Repo)
 }
 
 func (gitlabProvider) FetchIssue(ctx context.Context, spec repospec.RepoSpec, number int) (issueSummary, error) {
-	return fetchGitLabIssue(ctx, spec.Host, spec.Namespace, spec.Repo, number)
+	apiEndpoint := resolveGitLabAPIEndpoint(spec)
+	return fetchGitLabIssue(ctx, apiEndpoint, spec.Namespace, spec.Repo, number)
 }
 
 func (gitlabProvider) FetchMRs(ctx context.Context, spec repospec.RepoSpec) ([]prSummary, error) {
-	return fetchGitLabMRs(ctx, spec.Host, spec.Namespace, spec.Repo)
+	apiEndpoint := resolveGitLabAPIEndpoint(spec)
+	return fetchGitLabMRs(ctx, apiEndpoint, spec.Namespace, spec.Repo)
 }
 
 func (gitlabProvider) FetchMR(ctx context.Context, spec repospec.RepoSpec, number int) (prSummary, error) {
-	return fetchGitLabMR(ctx, spec.Host, spec.Namespace, spec.Repo, number)
+	apiEndpoint := resolveGitLabAPIEndpoint(spec)
+	return fetchGitLabMR(ctx, apiEndpoint, spec.Namespace, spec.Repo, number)
+}
+
+func resolveGitLabAPIEndpoint(spec repospec.RepoSpec) string {
+	if spec.ApiURL != "" {
+		return spec.ApiURL
+	}
+	if spec.BasePath != "" {
+		basePath := strings.Trim(spec.BasePath, "/")
+		return fmt.Sprintf("https://%s/%s", spec.Host, basePath)
+	}
+	return spec.Host
 }
 
 func (gitlabProvider) BuildIssueURL(spec repospec.RepoSpec, number int) string {
@@ -72,7 +87,7 @@ func gitlabProjectPath(namespace, project string) string {
 	return url.PathEscape(namespace + "/" + project)
 }
 
-func fetchGitLabIssues(ctx context.Context, host, namespace, repo string) ([]issueSummary, error) {
+func fetchGitLabIssues(ctx context.Context, apiEndpoint, namespace, repo string) ([]issueSummary, error) {
 	if strings.TrimSpace(namespace) == "" || strings.TrimSpace(repo) == "" {
 		return nil, fmt.Errorf("namespace/repo is required")
 	}
@@ -84,7 +99,7 @@ func fetchGitLabIssues(ctx context.Context, host, namespace, repo string) ([]iss
 		Title string `json:"title"`
 	}
 
-	out, err := runGlabAPICommand(ctx, host, endpoint)
+	out, err := runGlabAPICommand(ctx, apiEndpoint, endpoint)
 	if err != nil {
 		return nil, fmt.Errorf("failed to fetch GitLab issues: %w", err)
 	}
@@ -103,7 +118,7 @@ func fetchGitLabIssues(ctx context.Context, host, namespace, repo string) ([]iss
 	return summaries, nil
 }
 
-func fetchGitLabIssue(ctx context.Context, host, namespace, repo string, number int) (issueSummary, error) {
+func fetchGitLabIssue(ctx context.Context, apiEndpoint, namespace, repo string, number int) (issueSummary, error) {
 	if strings.TrimSpace(namespace) == "" || strings.TrimSpace(repo) == "" {
 		return issueSummary{}, fmt.Errorf("namespace/repo is required")
 	}
@@ -115,7 +130,7 @@ func fetchGitLabIssue(ctx context.Context, host, namespace, repo string, number 
 		Title string `json:"title"`
 	}
 
-	out, err := runGlabAPICommand(ctx, host, endpoint)
+	out, err := runGlabAPICommand(ctx, apiEndpoint, endpoint)
 	if err != nil {
 		return issueSummary{}, fmt.Errorf("failed to fetch GitLab issue %d: %w", number, err)
 	}
@@ -130,7 +145,7 @@ func fetchGitLabIssue(ctx context.Context, host, namespace, repo string, number 
 	}, nil
 }
 
-func fetchGitLabMRs(ctx context.Context, host, namespace, repo string) ([]prSummary, error) {
+func fetchGitLabMRs(ctx context.Context, apiEndpoint, namespace, repo string) ([]prSummary, error) {
 	if strings.TrimSpace(namespace) == "" || strings.TrimSpace(repo) == "" {
 		return nil, fmt.Errorf("namespace/repo is required")
 	}
@@ -144,7 +159,7 @@ func fetchGitLabMRs(ctx context.Context, host, namespace, repo string) ([]prSumm
 		TargetBranch string `json:"target_branch"`
 	}
 
-	out, err := runGlabAPICommand(ctx, host, endpoint)
+	out, err := runGlabAPICommand(ctx, apiEndpoint, endpoint)
 	if err != nil {
 		return nil, fmt.Errorf("failed to fetch GitLab merge requests: %w", err)
 	}
@@ -165,7 +180,7 @@ func fetchGitLabMRs(ctx context.Context, host, namespace, repo string) ([]prSumm
 	return summaries, nil
 }
 
-func fetchGitLabMR(ctx context.Context, host, namespace, repo string, number int) (prSummary, error) {
+func fetchGitLabMR(ctx context.Context, apiEndpoint, namespace, repo string, number int) (prSummary, error) {
 	if strings.TrimSpace(namespace) == "" || strings.TrimSpace(repo) == "" {
 		return prSummary{}, fmt.Errorf("namespace/repo is required")
 	}
@@ -179,7 +194,7 @@ func fetchGitLabMR(ctx context.Context, host, namespace, repo string, number int
 		TargetBranch string `json:"target_branch"`
 	}
 
-	out, err := runGlabAPICommand(ctx, host, endpoint)
+	out, err := runGlabAPICommand(ctx, apiEndpoint, endpoint)
 	if err != nil {
 		return prSummary{}, fmt.Errorf("failed to fetch GitLab MR %d: %w", number, err)
 	}
@@ -196,23 +211,15 @@ func fetchGitLabMR(ctx context.Context, host, namespace, repo string, number int
 	}, nil
 }
 
-func runGlabAPICommand(ctx context.Context, host, endpoint string) ([]byte, error) {
+func runGlabAPICommand(ctx context.Context, apiEndpoint, endpoint string) ([]byte, error) {
 	args := []string{"api", endpoint}
-	if host != "" && host != "gitlab.com" {
-		args = append([]string{"--hostname", host}, args...)
-	}
 
-	stdout, _, err := defaultExecutor.Execute(ctx, "glab", args...)
-	if err != nil {
-		return nil, err
-	}
-	return stdout, nil
-}
-
-func runGlabAPICommandWithApiURL(ctx context.Context, apiURL, endpoint string) ([]byte, error) {
-	args := []string{"api", endpoint}
-	if apiURL != "" {
-		args = append([]string{"--api-host", apiURL}, args...)
+	if apiEndpoint != "" && apiEndpoint != "gitlab.com" {
+		if strings.HasPrefix(apiEndpoint, "http://") || strings.HasPrefix(apiEndpoint, "https://") {
+			args = append([]string{"--api-host", apiEndpoint}, args...)
+		} else {
+			args = append([]string{"--hostname", apiEndpoint}, args...)
+		}
 	}
 
 	stdout, _, err := defaultExecutor.Execute(ctx, "glab", args...)
