@@ -23,3 +23,7 @@ func DisplayName(input string) string {
 func SpecFromKey(repoKey string) string {
 	return corerepospec.SpecFromKey(repoKey)
 }
+
+func SpecFromKeyWithScheme(repoKey string, isSSH bool) string {
+	return corerepospec.SpecFromKeyWithScheme(repoKey, isSSH)
+}

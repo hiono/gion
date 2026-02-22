@@ -8,6 +8,7 @@ import (
 
 	"github.com/tasuku43/gion/internal/app/manifestplan"
 	"github.com/tasuku43/gion/internal/domain/repo"
+	"github.com/tasuku43/gion/internal/domain/repospec"
 	"github.com/tasuku43/gion/internal/domain/workspace"
 	"github.com/tasuku43/gion/internal/infra/output"
 	"github.com/tasuku43/gion/internal/ui"
@@ -149,19 +150,8 @@ func ensureRepoGet(ctx context.Context, rootDir string, repoSpecs []string, noPr
 }
 
 func repoSpecFromKey(repoKey string) string {
-	trimmed := strings.TrimSuffix(repoKey, ".git")
-	trimmed = strings.TrimSuffix(trimmed, "/")
-	parts := strings.Split(trimmed, "/")
-	if len(parts) < 3 {
-		return repoKey
-	}
-	host := parts[0]
-	owner := parts[1]
-	repoName := parts[2]
-	if strings.EqualFold(strings.TrimSpace(defaultRepoProtocol), "ssh") {
-		return fmt.Sprintf("git@%s:%s/%s.git", host, owner, repoName)
-	}
-	return fmt.Sprintf("https://%s/%s/%s.git", host, owner, repoName)
+	isSSH := strings.EqualFold(strings.TrimSpace(defaultRepoProtocol), "ssh")
+	return repospec.SpecFromKeyWithScheme(repoKey, isSSH)
 }
 
 func formatRepoName(alias, repoKey string) string {
