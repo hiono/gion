@@ -358,11 +358,13 @@ func validateRepoKey(repoKey string) error {
 	}
 	trimmed := strings.TrimSuffix(strings.TrimSpace(repoKey), ".git")
 	parts := strings.Split(trimmed, "/")
-	if len(parts) != 3 {
-		return fmt.Errorf("invalid repo key (must be host/owner/repo[.git])")
+	if len(parts) < 3 {
+		return fmt.Errorf("invalid repo key (must be host/owner/repo[.git] or host/group/.../repo[.git])")
 	}
-	if strings.TrimSpace(parts[0]) == "" || strings.TrimSpace(parts[1]) == "" || strings.TrimSpace(parts[2]) == "" {
-		return fmt.Errorf("invalid repo key (must be host/owner/repo[.git])")
+	for _, p := range parts {
+		if strings.TrimSpace(p) == "" {
+			return fmt.Errorf("invalid repo key (must be host/owner/repo[.git] or host/group/.../repo[.git])")
+		}
 	}
 	return nil
 }
