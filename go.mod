@@ -33,4 +33,4 @@ require (
 	golang.org/x/text v0.3.8 // indirect
 )
 
-replace github.com/tasuku43/gion-core => github.com/hiono/gion-core v0.0.0-20260222061924-ebee81fd319d
+replace github.com/tasuku43/gion-core => github.com/hiono/gion-core v0.0.0-20260222090004-038615bfd8b5
