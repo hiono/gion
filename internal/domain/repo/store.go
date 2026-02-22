@@ -5,9 +5,9 @@ import (
 	"fmt"
 	"os"
 
-	coregitparse "github.com/tasuku43/gion-core/gitparse"
-	coregitref "github.com/tasuku43/gion-core/gitref"
-	corerepostore "github.com/tasuku43/gion-core/repostore"
+	coregitparse "github.com/hiono/gion-core/gitparse"
+	coregitref "github.com/hiono/gion-core/gitref"
+	corerepostore "github.com/hiono/gion-core/repostore"
 	"github.com/tasuku43/gion/internal/infra/gitcmd"
 	"github.com/tasuku43/gion/internal/infra/paths"
 )

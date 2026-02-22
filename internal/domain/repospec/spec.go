@@ -4,7 +4,7 @@ import (
 	"os"
 	"strings"
 
-	corerepospec "github.com/tasuku43/gion-core/repospec"
+	corerepospec "github.com/hiono/gion-core/repospec"
 )
 
 type Provider string

@@ -8,8 +8,8 @@ import (
 	"strings"
 
 	"github.com/mattn/go-isatty"
-	coreapplyplan "github.com/tasuku43/gion-core/applyplan"
-	coreplanner "github.com/tasuku43/gion-core/planner"
+	coreapplyplan "github.com/hiono/gion-core/applyplan"
+	coreplanner "github.com/hiono/gion-core/planner"
 	"github.com/tasuku43/gion/internal/app/apply"
 	"github.com/tasuku43/gion/internal/app/manifestplan"
 	"github.com/tasuku43/gion/internal/domain/manifest"

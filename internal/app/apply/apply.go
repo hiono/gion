@@ -6,7 +6,7 @@ import (
 	"strings"
 	"time"
 
-	coreapplyplan "github.com/tasuku43/gion-core/applyplan"
+	coreapplyplan "github.com/hiono/gion-core/applyplan"
 	"github.com/tasuku43/gion/internal/app/add"
 	"github.com/tasuku43/gion/internal/app/create"
 	"github.com/tasuku43/gion/internal/app/manifestplan"

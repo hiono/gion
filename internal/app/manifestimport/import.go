@@ -6,7 +6,7 @@ import (
 	"os"
 	"strings"
 
-	coreimportplan "github.com/tasuku43/gion-core/importplan"
+	coreimportplan "github.com/hiono/gion-core/importplan"
 	"github.com/tasuku43/gion/internal/domain/manifest"
 	"github.com/tasuku43/gion/internal/domain/workspace"
 	"github.com/tasuku43/gion/internal/infra/paths"

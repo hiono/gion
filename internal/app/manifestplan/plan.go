@@ -3,7 +3,7 @@ package manifestplan
 import (
 	"context"
 
-	coreplanner "github.com/tasuku43/gion-core/planner"
+	coreplanner "github.com/hiono/gion-core/planner"
 	"github.com/tasuku43/gion/internal/app/manifestimport"
 	"github.com/tasuku43/gion/internal/domain/manifest"
 )

@@ -3,7 +3,7 @@ package workspace
 import (
 	"context"
 
-	coreworkspacerisk "github.com/tasuku43/gion-core/workspacerisk"
+	coreworkspacerisk "github.com/hiono/gion-core/workspacerisk"
 )
 
 type WorkspaceStateKind string

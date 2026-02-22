@@ -1,7 +1,7 @@
 package repo
 
 import (
-	corerepostore "github.com/tasuku43/gion-core/repostore"
+	corerepostore "github.com/hiono/gion-core/repostore"
 	"github.com/tasuku43/gion/internal/infra/paths"
 )
 

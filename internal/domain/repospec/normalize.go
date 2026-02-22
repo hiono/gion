@@ -1,6 +1,6 @@
 package repospec
 
-import corerepospec "github.com/tasuku43/gion-core/repospec"
+import corerepospec "github.com/hiono/gion-core/repospec"
 
 type Spec = corerepospec.Spec
 

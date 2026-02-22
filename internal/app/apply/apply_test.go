@@ -3,7 +3,7 @@ package apply
 import (
 	"testing"
 
-	coreapplyplan "github.com/tasuku43/gion-core/applyplan"
+	coreapplyplan "github.com/hiono/gion-core/applyplan"
 )
 
 func TestUpdateBaseBranchCandidate(t *testing.T) {

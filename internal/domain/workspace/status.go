@@ -4,7 +4,7 @@ import (
 	"context"
 	"fmt"
 
-	coregitparse "github.com/tasuku43/gion-core/gitparse"
+	coregitparse "github.com/hiono/gion-core/gitparse"
 	"github.com/tasuku43/gion/internal/infra/gitcmd"
 	"github.com/tasuku43/gion/internal/infra/paths"
 )

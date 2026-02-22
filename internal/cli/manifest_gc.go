@@ -10,9 +10,9 @@ import (
 	"strings"
 
 	"github.com/mattn/go-isatty"
-	coregcplan "github.com/tasuku43/gion-core/gcplan"
-	coregitparse "github.com/tasuku43/gion-core/gitparse"
-	coregitref "github.com/tasuku43/gion-core/gitref"
+	coregcplan "github.com/hiono/gion-core/gcplan"
+	coregitparse "github.com/hiono/gion-core/gitparse"
+	coregitref "github.com/hiono/gion-core/gitref"
 	"github.com/tasuku43/gion/internal/app/manifestplan"
 	"github.com/tasuku43/gion/internal/domain/manifest"
 	"github.com/tasuku43/gion/internal/domain/repo"

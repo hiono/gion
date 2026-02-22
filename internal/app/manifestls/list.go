@@ -5,8 +5,8 @@ import (
 	"fmt"
 	"strings"
 
-	coremanifestlsplan "github.com/tasuku43/gion-core/manifestlsplan"
-	coreworkspacerisk "github.com/tasuku43/gion-core/workspacerisk"
+	coremanifestlsplan "github.com/hiono/gion-core/manifestlsplan"
+	coreworkspacerisk "github.com/hiono/gion-core/workspacerisk"
 	"github.com/tasuku43/gion/internal/app/manifestplan"
 	"github.com/tasuku43/gion/internal/domain/workspace"
 )

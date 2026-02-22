@@ -1,6 +1,6 @@
 package manifestplan
 
-import coreplanner "github.com/tasuku43/gion-core/planner"
+import coreplanner "github.com/hiono/gion-core/planner"
 
 type RepoChangeKind = coreplanner.RepoChangeKind
 

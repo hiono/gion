@@ -7,10 +7,10 @@ require (
 	github.com/charmbracelet/bubbletea v1.3.10
 	github.com/charmbracelet/lipgloss v1.1.0
 	github.com/charmbracelet/x/ansi v0.10.1
+	github.com/hiono/gion-core v0.1.0
 	github.com/mattn/go-isatty v0.0.20
 	github.com/muesli/termenv v0.16.0
 	github.com/pmezard/go-difflib v1.0.0
-	github.com/tasuku43/gion-core v0.1.0
 	gopkg.in/yaml.v3 v3.0.1
 )
 
@@ -33,4 +33,4 @@ require (
 	golang.org/x/text v0.3.8 // indirect
 )
 
-replace github.com/tasuku43/gion-core => github.com/hiono/gion-core v0.0.0-20260222090004-038615bfd8b5
+replace github.com/hiono/gion-core => /workspace/gion-core
