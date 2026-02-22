@@ -29,15 +29,10 @@ func runApply(ctx context.Context, rootDir string, args []string, noPrompt bool)
 	}
 	plan, err := manifestplan.Plan(ctx, rootDir)
 	if err != nil {
-		var vErr *manifest.ValidationError
-		if errors.As(err, &vErr) {
-			theme := ui.DefaultTheme()
-			useColor := isatty.IsTerminal(os.Stdout.Fd())
-			renderer := ui.NewRenderer(os.Stdout, theme, useColor)
-			renderManifestValidationResult(renderer, vErr.Result)
-			return err
-		}
-		return err
+		theme := ui.DefaultTheme()
+		useColor := isatty.IsTerminal(os.Stdout.Fd())
+		renderer := ui.NewRenderer(os.Stdout, theme, useColor)
+		return handlePlanError(renderer, err)
 	}
 	_, err = runApplyInternalWithPlan(ctx, rootDir, nil, noPrompt, plan)
 	return err

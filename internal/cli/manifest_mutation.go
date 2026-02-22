@@ -50,10 +50,10 @@ func applyManifestMutation(ctx context.Context, rootDir string, updated manifest
 	}
 
 	plan, planErr := manifestplan.Plan(ctx, rootDir)
-	planOK := planErr == nil
-	if !planOK {
-		return planErr
+	if planErr != nil {
+		return handlePlanError(renderer, planErr)
 	}
+	planOK := true
 	if planOK && len(plan.Changes) == 0 {
 		if opts.Hooks.ShowPrelude != nil {
 			renderer.Blank()
