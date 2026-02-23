@@ -1,7 +1,6 @@
 package repospec
 
 import (
-	"os"
 	"strings"
 
 	corerepospec "github.com/hiono/gion-core/repospec"
@@ -84,9 +83,6 @@ func DetectProvider(host string) Provider {
 	case containsProvider(host, "github"):
 		return ProviderGitHub
 	default:
-		if defaultProvider := os.Getenv("GION_DEFAULT_PROVIDER"); defaultProvider != "" {
-			return Provider(strings.ToLower(defaultProvider))
-		}
 		return ProviderGitHub
 	}
 }

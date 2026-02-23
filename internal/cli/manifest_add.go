@@ -26,6 +26,8 @@ func runManifestAdd(ctx context.Context, rootDir string, args []string, globalNo
 	var reviewFlag boolFlag
 	var issueFlag boolFlag
 	var repoFlag stringFlag
+	var provider string
+	var basePath string
 	var branch string
 	var baseRef string
 	var helpFlag bool
@@ -37,6 +39,8 @@ func runManifestAdd(ctx context.Context, rootDir string, args []string, globalNo
 	addFlags.Var(&issueFlag, "issue", "add issue workspace from issue")
 	addFlags.Var(&repoFlag, "repo", "add workspace from a repo")
 	addFlags.Var(&workspaceIDFlag, "workspace-id", "not supported (use positional WORKSPACE_ID)")
+	addFlags.StringVar(&provider, "provider", "", "repository provider (github, gitlab, bitbucket)")
+	addFlags.StringVar(&basePath, "base-path", "", "base path for GitLab self-managed with subdirectory (e.g., /gitlab)")
 	addFlags.StringVar(&branch, "branch", "", "branch name")
 	addFlags.StringVar(&baseRef, "base", "", "base ref")
 	addFlags.BoolVar(&noApply, "no-apply", false, "do not run gion apply")
@@ -267,6 +271,9 @@ func runManifestAdd(ctx context.Context, rootDir string, args []string, globalNo
 		if err != nil {
 			return err
 		}
+		if basePath != "" {
+			return fmt.Errorf("--base-path is not valid with --preset")
+		}
 		tmpl, ok := file.Presets[presetName.value]
 		if !ok {
 			return fmt.Errorf("preset not found: %s", presetName.value)
@@ -329,11 +336,14 @@ func runManifestAdd(ctx context.Context, rootDir string, args []string, globalNo
 			r.Bullet(fmt.Sprintf("repo: %s", displayRepoSpec(repoSpecNorm)))
 			r.Bullet(fmt.Sprintf("workspace id: %s", workspaceID))
 			r.Bullet(fmt.Sprintf("branch: %s", branchValue))
+			if basePath != "" {
+				r.Bullet(fmt.Sprintf("base-path: %s", basePath))
+			}
 			if baseRef != "" {
 				r.Bullet(fmt.Sprintf("base: %s", baseRef))
 			}
 		}
-		return manifestAddRepoWithSpec(ctx, rootDir, repoSpecNorm, workspaceID, "", branchValue, baseRef, apply, renderInputs)
+		return manifestAddRepoWithSpec(ctx, rootDir, repoSpecNorm, workspaceID, "", branchValue, baseRef, provider, basePath, apply, renderInputs)
 	}
 
 	if reviewMode {
@@ -342,6 +352,9 @@ func runManifestAdd(ctx context.Context, rootDir string, args []string, globalNo
 		}
 		if branch != "" || baseRef != "" {
 			return fmt.Errorf("--branch and --base are not valid with --review")
+		}
+		if basePath != "" {
+			return fmt.Errorf("--base-path is not valid with --review")
 		}
 		prURL := ""
 		if len(remaining) == 1 {
@@ -359,6 +372,9 @@ func runManifestAdd(ctx context.Context, rootDir string, args []string, globalNo
 	if issueMode {
 		if len(remaining) > 1 {
 			return fmt.Errorf("usage: gion manifest add --issue <ISSUE_URL> [--branch <name>] [--base <ref>]")
+		}
+		if basePath != "" {
+			return fmt.Errorf("--base-path is not valid with --issue")
 		}
 		issueURL := ""
 		if len(remaining) == 1 {
@@ -457,10 +473,10 @@ func manifestAddRepo(ctx context.Context, rootDir, repoSpec, workspaceID, descri
 	if err := workspace.ValidateBranchName(ctx, branchValue); err != nil {
 		return err
 	}
-	return manifestAddRepoWithSpec(ctx, rootDir, repoSpecNorm, workspaceID, description, branchValue, baseRef, apply, nil)
+	return manifestAddRepoWithSpec(ctx, rootDir, repoSpecNorm, workspaceID, description, branchValue, baseRef, "", "", apply, nil)
 }
 
-func manifestAddRepoWithSpec(ctx context.Context, rootDir, repoSpec, workspaceID, description, branch, baseRef string, apply func(manifest.File, func(*ui.Renderer), []string) error, showInputs func(*ui.Renderer)) error {
+func manifestAddRepoWithSpec(ctx context.Context, rootDir, repoSpec, workspaceID, description, branch, baseRef, provider, basePath string, apply func(manifest.File, func(*ui.Renderer), []string) error, showInputs func(*ui.Renderer)) error {
 	if err := workspace.ValidateWorkspaceID(ctx, workspaceID); err != nil {
 		return err
 	}
@@ -478,7 +494,7 @@ func manifestAddRepoWithSpec(ctx context.Context, rootDir, repoSpec, workspaceID
 		return fmt.Errorf("workspace exists on filesystem but missing in %s: %s (suggest: gion import)", manifest.FileName, workspaceID)
 	}
 
-	spec, _, err := repo.Normalize(repoSpec)
+	spec, _, err := repo.NormalizeWithBasePath(repoSpec, basePath)
 	if err != nil {
 		return err
 	}
@@ -486,15 +502,25 @@ func manifestAddRepoWithSpec(ctx context.Context, rootDir, repoSpec, workspaceID
 		return err
 	}
 
+	detectedProvider := spec.Provider
+	if provider != "" {
+		detectedProvider = repospec.Provider(provider)
+	}
+	if basePath != "" && detectedProvider != repospec.ProviderGitLab && detectedProvider != repospec.ProviderBitbucket {
+		return fmt.Errorf("--base-path is only valid for GitLab or Bitbucket provider (detected: %s). Use --provider to specify", detectedProvider)
+	}
+
 	desired.Workspaces[workspaceID] = manifest.Workspace{
 		Description: strings.TrimSpace(description),
 		Mode:        workspace.MetadataModeRepo,
 		Repos: []manifest.Repo{
 			{
-				Alias:   strings.TrimSpace(spec.Repo),
-				RepoKey: strings.TrimSpace(spec.RepoKey),
-				Branch:  strings.TrimSpace(branch),
-				BaseRef: strings.TrimSpace(baseRef),
+				Alias:    strings.TrimSpace(spec.Repo),
+				RepoKey:  strings.TrimSpace(spec.RepoKey),
+				Branch:   strings.TrimSpace(branch),
+				BaseRef:  strings.TrimSpace(baseRef),
+				Provider: string(detectedProvider),
+				BasePath: strings.TrimSpace(basePath),
 			},
 		},
 	}

@@ -27,6 +27,10 @@ func normalizeManifestAddArgs(args []string) []string {
 		"-branch":        {},
 		"--base":         {},
 		"-base":          {},
+		"--provider":     {},
+		"-provider":      {},
+		"--base-path":    {},
+		"-base-path":     {},
 		"--workspace-id": {},
 		"-workspace-id":  {},
 	})

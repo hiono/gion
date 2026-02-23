@@ -399,3 +399,69 @@ Updated fork at `github.com/hiono/gion-core` with:
 - `NormalizeWithBasePath(input, basePath string) (Spec, error)`
 - SSH URL base_path ignoring
 - Port boundary tests (1, 65535)
+
+## Provider Survey (2026-02-23)
+
+### Provider Feature Comparison
+
+| Feature               | GitHub                | GitLab                     | Bitbucket                      |
+| --------------------- | --------------------- | -------------------------- | ------------------------------ |
+| **On-premise Product**  | Enterprise Server     | Self-Managed               | Data Center/Server             |
+| **Subdirectory Support**| ❌ No                 | ✅ Yes                     | ✅ Yes                         |
+| **base_path Setting**   | N/A                   | `external_url '/gitlab'`     | Context Path                   |
+| **URL Example**         | `github.com/owner/repo` | `example.com/gitlab/grp/prj` | `example.com/bitbucket/prj/repo` |
+| **Group Hierarchy**     | 2 levels (owner/repo) | Max 20 levels              | 2 levels (project/repo)        |
+| **Nesting Support**     | ❌ Repo not supported | ✅ Yes                     | ❌ No                          |
+
+### base_path Requirement Matrix
+
+| Provider  | Cloud | On-premise (Subdomain) | On-premise (Subdirectory) |
+| --------- | ----- | ---------------------- | ------------------------- |
+| GitHub    | No    | No                     | ❌ Not supported           |
+| GitLab    | No    | No                     | **Required**              |
+| Bitbucket | No    | No                     | **Required**              |
+
+### Design Decisions
+
+- `--provider` flag added: `github`, `gitlab`, `bitbucket`
+- `--base-path` validation: Only valid for GitLab or Bitbucket
+- `GION_DEFAULT_PROVIDER` removed: Not in original gion-core
+
+### Combination Verification Table
+
+#### GitLab Self-Managed (Subdirectory)
+Example: `cpusys.mu.renesas.com/git/a0201089/gion-test`
+
+| --repo | --provider | --base-path | Auto-detect | Result        |
+| ------ | ---------- | ----------- | ----------- | ------------- |
+| ✓      | -          | -           | github      | ⚠️ Treated as GitHub |
+| ✓      | -          | /git        | github      | ❌ Error      |
+| ✓      | gitlab     | -           | Override    | ✅ Success    |
+| ✓      | gitlab     | /git        | Override    | ✅ Success    |
+
+#### Bitbucket Data Center (Subdirectory)
+Example: `company.com/bitbucket/PROJ/repo`
+
+| --repo | --provider | --base-path | Auto-detect | Result    |
+| ------ | ---------- | ----------- | ----------- | --------- |
+| ✓      | -          | -           | bitbucket   | ✅ Success |
+| ✓      | -          | /bitbucket  | bitbucket   | ✅ Success |
+
+#### GitHub
+Example: `github.com/user/repo`
+
+| --repo | --provider | --base-path | Auto-detect | Result    |
+| ------ | ---------- | ----------- | ----------- | --------- |
+| ✓      | -          | -           | github      | ✅ Success |
+| ✓      | -          | /git        | github      | ❌ Error  |
+
+### Files Changed
+
+| File | Change |
+|------|--------|
+| `internal/cli/manifest_add.go` | --provider flag, base_path validation |
+| `internal/cli/manifest_add_utils.go` | --provider in flag normalization |
+| `internal/cli/help.go` | --provider help text |
+| `internal/cli/completion.go` | bash/zsh completion for --provider |
+| `internal/domain/repospec/spec.go` | GION_DEFAULT_PROVIDER removed |
+| `internal/domain/manifest/manifest.go` | Provider field (already exists) |

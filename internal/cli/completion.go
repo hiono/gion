@@ -67,7 +67,13 @@ _gion_completion() {
           esac
         ;;
         add)
-          COMPREPLY=($(compgen -W "--preset --review --issue --repo --branch --base --no-apply --no-prompt" -- "${cur}"))
+          case ${prev} in
+            --provider)
+              COMPREPLY=($(compgen -W "github gitlab bitbucket" -- "${cur}"))
+              return
+            ;;
+          esac
+          COMPREPLY=($(compgen -W "--preset --review --issue --repo --branch --base --provider --base-path --no-apply --no-prompt" -- "${cur}"))
           return
         ;;
         rm)
@@ -199,6 +205,8 @@ _gion() {
                 '--repo[add workspace from repo]:repo' \
                 '--branch[override branch name]:name' \
                 '--base[override base ref]:ref' \
+                '--provider[repository provider]:provider:(github gitlab bitbucket)' \
+                '--base-path[base path for subdirectory GitLab/Bitbucket]:path' \
                 '--no-apply[update manifest only]' \
                 '--no-prompt[disable interactive prompt]'
             ;;

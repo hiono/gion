@@ -47,8 +47,8 @@ func DisplayName(input string) string {
 }
 
 // SpecFromKey converts a repo key (host/owner/repo.git) into a cloneable spec.
-func SpecFromKey(repoKey string) (repospec.RepoSpec, error) {
-	return repospec.SpecFromKeyWithBasePath(repoKey, "")
+func SpecFromKey(repoKey string) string {
+	return repospec.SpecFromKey(repoKey)
 }
 
 // SpecFromKeyWithBasePath converts a repo key with base_path support.
