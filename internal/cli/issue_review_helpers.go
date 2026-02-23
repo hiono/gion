@@ -37,11 +37,10 @@ func buildIssueRepoChoices(rootDir string) ([]issueRepoChoice, error) {
 		return nil, err
 	}
 
-	mf, err := manifest.Load(rootDir)
-	if err != nil {
-		return nil, err
+	epByRepoKey := make(map[string]repospec.Endpoint)
+	if mf, err := manifest.Load(rootDir); err == nil {
+		epByRepoKey = mf.EndpointByRepoKey()
 	}
-	epByRepoKey := mf.EndpointByRepoKey()
 
 	var choices []issueRepoChoice
 	for _, entry := range repos {
@@ -123,11 +122,10 @@ func buildReviewRepoChoices(rootDir string) ([]reviewRepoChoice, error) {
 		return nil, err
 	}
 
-	mf, err := manifest.Load(rootDir)
-	if err != nil {
-		return nil, err
+	epByRepoKey := make(map[string]repospec.Endpoint)
+	if mf, err := manifest.Load(rootDir); err == nil {
+		epByRepoKey = mf.EndpointByRepoKey()
 	}
-	epByRepoKey := mf.EndpointByRepoKey()
 
 	var choices []reviewRepoChoice
 	for _, entry := range repos {
