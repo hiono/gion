@@ -712,12 +712,9 @@ func manifestAddIssueURL(ctx context.Context, rootDir, issueURL, branch, baseRef
 	if err != nil {
 		return err
 	}
-	if !strings.EqualFold(strings.TrimSpace(req.Provider), "github") {
-		return fmt.Errorf("unsupported issue provider: %s", req.Provider)
-	}
 	provider, err := ProviderByName(req.Provider)
 	if err != nil {
-		return err
+		return fmt.Errorf("unsupported issue provider: %s", req.Provider)
 	}
 	spec := repospec.RepoSpec{Endpoint: repospec.Endpoint{Host: req.Host}, Owner: req.Owner, Repo: req.Repo}
 	issue, err := provider.FetchIssue(ctx, spec, req.Number)

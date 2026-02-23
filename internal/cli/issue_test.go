@@ -46,7 +46,14 @@ func TestParseIssueURLUnsupported(t *testing.T) {
 	if _, err := parseIssueURL("https://github.com/owner/repo/pull/1"); err == nil {
 		t.Fatalf("expected error for non-issue URL")
 	}
-	if _, err := parseIssueURL("https://gitlab.com/group/sub/repo/-/issues/1"); err == nil {
-		t.Fatalf("expected error for nested groups (not supported)")
+}
+
+func TestParseIssueURLGitLabNestedGroup(t *testing.T) {
+	req, err := parseIssueURL("https://gitlab.com/group/sub/repo/-/issues/1")
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if req.Provider != "gitlab" || req.Owner != "group/sub" || req.Repo != "repo" || req.Number != 1 {
+		t.Fatalf("unexpected result: %+v", req)
 	}
 }

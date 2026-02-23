@@ -465,10 +465,15 @@ func parseIssueURL(raw string) (issueRequest, error) {
 		ownerParts := parts[:repoIdx]
 		provider := issueProvider(host, repoIdx, i)
 		if provider == "gitlab" {
-			if len(ownerParts) != 1 {
-				return issueRequest{}, fmt.Errorf("nested groups are not supported: %s", strings.Join(ownerParts, "/"))
-			}
-		} else if len(ownerParts) != 1 {
+			return issueRequest{
+				Provider: provider,
+				Host:     host,
+				Owner:    strings.Join(ownerParts, "/"),
+				Repo:     parts[repoIdx],
+				Number:   num,
+			}, nil
+		}
+		if len(ownerParts) != 1 {
 			return issueRequest{}, fmt.Errorf("invalid issue URL path: %s", u.Path)
 		}
 		return issueRequest{
