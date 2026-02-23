@@ -1,6 +1,7 @@
 package cli
 
 import (
+	"context"
 	"testing"
 
 	"github.com/tasuku43/gion/internal/domain/repospec"
@@ -156,5 +157,29 @@ func TestResolveGitLabAPIEndpoint(t *testing.T) {
 				t.Errorf("resolveGitLabAPIEndpoint() = %q, want %q", got, tt.want)
 			}
 		})
+	}
+}
+
+func TestFetchGitLabIssues_EmptyInput(t *testing.T) {
+	ctx := context.Background()
+	_, err := fetchGitLabIssues(ctx, "gitlab.com", "", "repo")
+	if err == nil {
+		t.Error("expected error for empty namespace")
+	}
+	_, err = fetchGitLabIssues(ctx, "gitlab.com", "namespace", "")
+	if err == nil {
+		t.Error("expected error for empty repo")
+	}
+}
+
+func TestFetchGitLabMRs_EmptyInput(t *testing.T) {
+	ctx := context.Background()
+	_, err := fetchGitLabMRs(ctx, "gitlab.com", "", "repo")
+	if err == nil {
+		t.Error("expected error for empty namespace")
+	}
+	_, err = fetchGitLabMRs(ctx, "gitlab.com", "namespace", "")
+	if err == nil {
+		t.Error("expected error for empty repo")
 	}
 }
