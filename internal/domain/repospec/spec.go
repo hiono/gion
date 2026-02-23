@@ -15,6 +15,14 @@ const (
 	ProviderUnknown   Provider = ""
 )
 
+func (p Provider) SupportsBasePath() bool {
+	return p == ProviderGitLab || p == ProviderBitbucket
+}
+
+func (p Provider) IsValid() bool {
+	return p == ProviderGitHub || p == ProviderGitLab || p == ProviderBitbucket
+}
+
 type RepoSpec struct {
 	Host      string
 	Owner     string

@@ -445,10 +445,12 @@ func manifestAddPresetWithFile(ctx context.Context, rootDir, presetName, workspa
 			return err
 		}
 		repos = append(repos, manifest.Repo{
-			Alias:   strings.TrimSpace(spec.Repo),
-			RepoKey: strings.TrimSpace(spec.RepoKey),
-			Branch:  branchValue,
-			BaseRef: strings.TrimSpace(baseRef),
+			Alias:    strings.TrimSpace(spec.Repo),
+			RepoKey:  strings.TrimSpace(spec.RepoKey),
+			Branch:   branchValue,
+			BaseRef:  strings.TrimSpace(baseRef),
+			Provider: string(spec.Provider),
+			BasePath: repoSpec.BasePath,
 		})
 	}
 
@@ -505,8 +507,11 @@ func manifestAddRepoWithSpec(ctx context.Context, rootDir, repoSpec, workspaceID
 	detectedProvider := spec.Provider
 	if provider != "" {
 		detectedProvider = repospec.Provider(provider)
+		if !detectedProvider.IsValid() {
+			return fmt.Errorf("invalid provider: %s (valid: github, gitlab, bitbucket)", provider)
+		}
 	}
-	if basePath != "" && detectedProvider != repospec.ProviderGitLab && detectedProvider != repospec.ProviderBitbucket {
+	if basePath != "" && !detectedProvider.SupportsBasePath() {
 		return fmt.Errorf("--base-path is only valid for GitLab or Bitbucket provider (detected: %s). Use --provider to specify", detectedProvider)
 	}
 
