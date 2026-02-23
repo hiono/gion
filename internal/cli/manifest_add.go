@@ -159,7 +159,7 @@ func runManifestAdd(ctx context.Context, rootDir string, args []string, globalNo
 			if err != nil {
 				return nil, err
 			}
-			spec := repospec.RepoSpec{Host: selected.Host, Owner: selected.Owner, Repo: selected.Repo}
+			spec := repospec.RepoSpec{Endpoint: repospec.Endpoint{Host: selected.Host}, Owner: selected.Owner, Repo: selected.Repo}
 			prs, err := provider.FetchMRs(ctx, spec)
 			if err != nil {
 				return nil, err
@@ -181,7 +181,7 @@ func runManifestAdd(ctx context.Context, rootDir string, args []string, globalNo
 			if err != nil {
 				return nil, err
 			}
-			spec := repospec.RepoSpec{Host: selected.Host, Owner: selected.Owner, Repo: selected.Repo}
+			spec := repospec.RepoSpec{Endpoint: repospec.Endpoint{Host: selected.Host}, Owner: selected.Owner, Repo: selected.Repo}
 			issues, err := provider.FetchIssues(ctx, spec)
 			if err != nil {
 				return nil, err
@@ -542,7 +542,7 @@ func manifestAddReviewURL(ctx context.Context, rootDir, prURL string, apply func
 	if err != nil {
 		return err
 	}
-	spec := repospec.RepoSpec{Host: req.Host, Owner: req.Owner, Repo: req.Repo}
+	spec := repospec.RepoSpec{Endpoint: repospec.Endpoint{Host: req.Host}, Owner: req.Owner, Repo: req.Repo}
 	pr, err := provider.FetchMR(ctx, spec, req.Number)
 	if err != nil {
 		return err
@@ -719,7 +719,7 @@ func manifestAddIssueURL(ctx context.Context, rootDir, issueURL, branch, baseRef
 	if err != nil {
 		return err
 	}
-	spec := repospec.RepoSpec{Host: req.Host, Owner: req.Owner, Repo: req.Repo}
+	spec := repospec.RepoSpec{Endpoint: repospec.Endpoint{Host: req.Host}, Owner: req.Owner, Repo: req.Repo}
 	issue, err := provider.FetchIssue(ctx, spec, req.Number)
 	if err != nil {
 		return err

@@ -52,15 +52,13 @@ func TestRepoSpec_IsGitLab(t *testing.T) {
 
 func TestRepoSpec_ToCoreSpec(t *testing.T) {
 	spec := RepoSpec{
-		Host:      "gitlab.company.com",
+		Endpoint:  Endpoint{Host: "gitlab.company.com", Port: 2222},
 		Owner:     "group/subgroup",
 		Repo:      "project",
 		RepoKey:   "gitlab.company.com/group/subgroup/project.git",
 		Provider:  ProviderGitLab,
 		Namespace: "group/subgroup",
 		Project:   "project",
-		Port:      2222,
-		Scheme:    "ssh",
 	}
 
 	core := spec.ToCoreSpec()

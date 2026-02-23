@@ -23,18 +23,31 @@ func (p Provider) IsValid() bool {
 	return p == ProviderGitHub || p == ProviderGitLab || p == ProviderBitbucket
 }
 
+type Endpoint struct {
+	Host     string `yaml:"host,omitempty"`
+	Port     int    `yaml:"port,omitempty"`
+	BasePath string `yaml:"base_path,omitempty"`
+}
+
+func (e Endpoint) IsSSH() bool {
+	return e.Port == 22
+}
+
+func (e Endpoint) Scheme() string {
+	if e.Port == 22 {
+		return "ssh"
+	}
+	return "https"
+}
+
 type RepoSpec struct {
-	Host      string
 	Owner     string
 	Repo      string
 	RepoKey   string
 	Provider  Provider
 	Namespace string
 	Project   string
-	Port      int
-	Scheme    string
-	BasePath  string
-	ApiURL    string
+	Endpoint  `yaml:",inline"`
 }
 
 // Owner vs Namespace semantics:
@@ -62,7 +75,9 @@ func (s RepoSpec) ToCoreSpec() corerepospec.Spec {
 
 func FromCoreSpec(core corerepospec.Spec) RepoSpec {
 	return RepoSpec{
-		Host:      core.Host,
+		Endpoint: Endpoint{
+			Host: core.Host,
+		},
 		Owner:     core.Owner,
 		Repo:      core.Repo,
 		RepoKey:   core.RepoKey,
@@ -96,5 +111,15 @@ func DetectProvider(host string) Provider {
 }
 
 func containsProvider(host, name string) bool {
-	return strings.Contains(strings.ToLower(host), name)
+	lower := strings.ToLower(host)
+	if lower == name || lower == name+".com" {
+		return true
+	}
+	parts := strings.Split(lower, ".")
+	for _, part := range parts {
+		if part == name {
+			return true
+		}
+	}
+	return false
 }

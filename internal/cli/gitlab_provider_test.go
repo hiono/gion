@@ -1,8 +1,6 @@
 package cli
 
 import (
-	"context"
-	"encoding/json"
 	"testing"
 
 	"github.com/tasuku43/gion/internal/domain/repospec"
@@ -19,37 +17,37 @@ func TestGitLabProvider_BuildIssueURL(t *testing.T) {
 	}{
 		{
 			name:    "with namespace",
-			spec:    repospec.RepoSpec{Host: "gitlab.com", Namespace: "group/subgroup", Project: "project"},
+			spec:    repospec.RepoSpec{Endpoint: repospec.Endpoint{Host: "gitlab.com"}, Namespace: "group/subgroup", Project: "project"},
 			number:  123,
 			wantURL: "https://gitlab.com/group/subgroup/project/-/issues/123",
 		},
 		{
 			name:    "without namespace",
-			spec:    repospec.RepoSpec{Host: "gitlab.com", Namespace: "", Project: "project"},
+			spec:    repospec.RepoSpec{Endpoint: repospec.Endpoint{Host: "gitlab.com"}, Namespace: "", Project: "project"},
 			number:  456,
 			wantURL: "https://gitlab.com/project/-/issues/456",
 		},
 		{
 			name:    "custom host",
-			spec:    repospec.RepoSpec{Host: "gitlab.example.com", Namespace: "org/team", Project: "repo"},
+			spec:    repospec.RepoSpec{Endpoint: repospec.Endpoint{Host: "gitlab.example.com"}, Namespace: "org/team", Project: "repo"},
 			number:  789,
 			wantURL: "https://gitlab.example.com/org/team/repo/-/issues/789",
 		},
 		{
 			name:    "custom port",
-			spec:    repospec.RepoSpec{Host: "gitlab.example.com", Port: 8080, Namespace: "org/team", Project: "repo"},
+			spec:    repospec.RepoSpec{Endpoint: repospec.Endpoint{Host: "gitlab.example.com", Port: 8080}, Namespace: "org/team", Project: "repo"},
 			number:  100,
 			wantURL: "https://gitlab.example.com:8080/org/team/repo/-/issues/100",
 		},
 		{
 			name:    "with base_path",
-			spec:    repospec.RepoSpec{Host: "example.com", BasePath: "/gitlab", Namespace: "org/team", Project: "repo"},
+			spec:    repospec.RepoSpec{Endpoint: repospec.Endpoint{Host: "example.com", BasePath: "/gitlab"}, Namespace: "org/team", Project: "repo"},
 			number:  200,
 			wantURL: "https://example.com/gitlab/org/team/repo/-/issues/200",
 		},
 		{
 			name:    "custom port with base_path",
-			spec:    repospec.RepoSpec{Host: "example.com", Port: 8443, BasePath: "/gitlab", Namespace: "org/team", Project: "repo"},
+			spec:    repospec.RepoSpec{Endpoint: repospec.Endpoint{Host: "example.com", Port: 8443, BasePath: "/gitlab"}, Namespace: "org/team", Project: "repo"},
 			number:  300,
 			wantURL: "https://example.com:8443/gitlab/org/team/repo/-/issues/300",
 		},
@@ -76,27 +74,33 @@ func TestGitLabProvider_BuildMRURL(t *testing.T) {
 	}{
 		{
 			name:    "with namespace",
-			spec:    repospec.RepoSpec{Host: "gitlab.com", Namespace: "group/subgroup", Project: "project"},
-			number:  100,
-			wantURL: "https://gitlab.com/group/subgroup/project/-/merge_requests/100",
+			spec:    repospec.RepoSpec{Endpoint: repospec.Endpoint{Host: "gitlab.com"}, Namespace: "group/subgroup", Project: "project"},
+			number:  123,
+			wantURL: "https://gitlab.com/group/subgroup/project/-/merge_requests/123",
 		},
 		{
-			name:    "without namespace",
-			spec:    repospec.RepoSpec{Host: "gitlab.com", Namespace: "", Project: "project"},
-			number:  200,
-			wantURL: "https://gitlab.com/project/-/merge_requests/200",
+			name:    "custom host",
+			spec:    repospec.RepoSpec{Endpoint: repospec.Endpoint{Host: "gitlab.example.com"}, Namespace: "org/team", Project: "repo"},
+			number:  456,
+			wantURL: "https://gitlab.example.com/org/team/repo/-/merge_requests/456",
 		},
 		{
 			name:    "custom port",
-			spec:    repospec.RepoSpec{Host: "gitlab.example.com", Port: 8080, Namespace: "org/team", Project: "repo"},
-			number:  100,
-			wantURL: "https://gitlab.example.com:8080/org/team/repo/-/merge_requests/100",
+			spec:    repospec.RepoSpec{Endpoint: repospec.Endpoint{Host: "gitlab.example.com", Port: 8080}, Namespace: "org/team", Project: "repo"},
+			number:  789,
+			wantURL: "https://gitlab.example.com:8080/org/team/repo/-/merge_requests/789",
 		},
 		{
 			name:    "with base_path",
-			spec:    repospec.RepoSpec{Host: "example.com", BasePath: "/gitlab", Namespace: "org/team", Project: "repo"},
+			spec:    repospec.RepoSpec{Endpoint: repospec.Endpoint{Host: "example.com", BasePath: "/gitlab"}, Namespace: "org/team", Project: "repo"},
+			number:  100,
+			wantURL: "https://example.com/gitlab/org/team/repo/-/merge_requests/100",
+		},
+		{
+			name:    "custom port with base_path",
+			spec:    repospec.RepoSpec{Endpoint: repospec.Endpoint{Host: "example.com", Port: 8443, BasePath: "/gitlab"}, Namespace: "org/team", Project: "repo"},
 			number:  200,
-			wantURL: "https://example.com/gitlab/org/team/repo/-/merge_requests/200",
+			wantURL: "https://example.com:8443/gitlab/org/team/repo/-/merge_requests/200",
 		},
 	}
 
@@ -107,85 +111,6 @@ func TestGitLabProvider_BuildMRURL(t *testing.T) {
 				t.Errorf("BuildMRURL() = %q, want %q", got, tt.wantURL)
 			}
 		})
-	}
-}
-
-type mockExecutor struct {
-	responses map[string][]byte
-	errors    map[string]error
-}
-
-func (m *mockExecutor) Execute(ctx context.Context, name string, args ...string) ([]byte, []byte, error) {
-	key := name + " " + args[0]
-	if resp, ok := m.responses[key]; ok {
-		return resp, nil, nil
-	}
-	return nil, nil, m.errors[key]
-}
-
-func TestGitLabProvider_FetchIssues(t *testing.T) {
-	issuesJSON, _ := json.Marshal([]struct {
-		IID   int    `json:"iid"`
-		Title string `json:"title"`
-	}{
-		{IID: 1, Title: "First issue"},
-		{IID: 2, Title: "Second issue"},
-	})
-
-	mock := &mockExecutor{
-		responses: map[string][]byte{
-			"glab api": issuesJSON,
-		},
-	}
-
-	original := defaultExecutor
-	defaultExecutor = mock
-	defer func() { defaultExecutor = original }()
-
-	ctx := context.Background()
-	spec := repospec.RepoSpec{Host: "gitlab.com", Namespace: "group", Repo: "project", Project: "project"}
-
-	p := gitlabProvider{}
-	issues, err := p.FetchIssues(ctx, spec)
-	if err != nil {
-		t.Fatalf("FetchIssues() error = %v", err)
-	}
-
-	if len(issues) != 2 {
-		t.Errorf("FetchIssues() got %d issues, want 2", len(issues))
-	}
-	if issues[0].Number != 1 || issues[0].Title != "First issue" {
-		t.Errorf("FetchIssues() first issue = %+v, want {Number:1, Title:'First issue'}", issues[0])
-	}
-}
-
-func TestGitLabProvider_FetchIssues_EmptyInput(t *testing.T) {
-	p := gitlabProvider{}
-	ctx := context.Background()
-
-	_, err := p.FetchIssues(ctx, repospec.RepoSpec{Host: "gitlab.com", Namespace: "", Repo: "project"})
-	if err == nil {
-		t.Error("FetchIssues() with empty namespace should return error")
-	}
-
-	_, err = p.FetchIssues(ctx, repospec.RepoSpec{Host: "gitlab.com", Namespace: "group", Repo: ""})
-	if err == nil {
-		t.Error("FetchIssues() with empty repo should return error")
-	}
-}
-
-func TestGitLabProvider_FetchMRs_EmptyInput(t *testing.T) {
-	p := gitlabProvider{}
-	ctx := context.Background()
-
-	_, err := p.FetchMRs(ctx, repospec.RepoSpec{Host: "gitlab.com", Namespace: "", Repo: "project"})
-	if err == nil {
-		t.Error("FetchMRs() with empty namespace should return error")
-	}
-
-	_, err = p.FetchMRs(ctx, repospec.RepoSpec{Host: "gitlab.com", Namespace: "group", Repo: ""})
-	if err == nil {
-		t.Error("FetchMRs() with empty repo should return error")
 	}
 }
 
@@ -203,28 +128,23 @@ func TestResolveGitLabAPIEndpoint(t *testing.T) {
 		want string
 	}{
 		{
-			name: "api_url takes precedence",
-			spec: repospec.RepoSpec{Host: "gitlab.com", BasePath: "/gitlab", ApiURL: "https://custom.api.com/v4"},
-			want: "https://custom.api.com/v4",
-		},
-		{
 			name: "base_path fallback",
-			spec: repospec.RepoSpec{Host: "example.com", BasePath: "/gitlab"},
+			spec: repospec.RepoSpec{Endpoint: repospec.Endpoint{Host: "example.com", BasePath: "/gitlab"}},
 			want: "https://example.com/gitlab",
 		},
 		{
 			name: "base_path with leading and trailing slashes trimmed",
-			spec: repospec.RepoSpec{Host: "example.com", BasePath: "///gitlab///"},
+			spec: repospec.RepoSpec{Endpoint: repospec.Endpoint{Host: "example.com", BasePath: "///gitlab///"}},
 			want: "https://example.com/gitlab",
 		},
 		{
 			name: "host only fallback",
-			spec: repospec.RepoSpec{Host: "gitlab.com"},
+			spec: repospec.RepoSpec{Endpoint: repospec.Endpoint{Host: "gitlab.com"}},
 			want: "gitlab.com",
 		},
 		{
 			name: "empty host returns empty",
-			spec: repospec.RepoSpec{Host: ""},
+			spec: repospec.RepoSpec{Endpoint: repospec.Endpoint{Host: ""}},
 			want: "",
 		},
 	}

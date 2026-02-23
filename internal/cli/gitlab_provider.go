@@ -37,9 +37,6 @@ func (gitlabProvider) FetchMR(ctx context.Context, spec repospec.RepoSpec, numbe
 }
 
 func resolveGitLabAPIEndpoint(spec repospec.RepoSpec) string {
-	if spec.ApiURL != "" {
-		return spec.ApiURL
-	}
 	if spec.BasePath != "" {
 		basePath := strings.Trim(spec.BasePath, "/")
 		return fmt.Sprintf("https://%s/%s", spec.Host, basePath)
