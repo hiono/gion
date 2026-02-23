@@ -30,7 +30,6 @@ type PresetRepo struct {
 	Repo     string `yaml:"repo"`
 	Provider string `yaml:"provider,omitempty"`
 	BasePath string `yaml:"base_path,omitempty"`
-	ApiURL   string `yaml:"api_url,omitempty"`
 }
 
 type Preset struct {
@@ -74,11 +73,9 @@ type Repo struct {
 	Project   string            `yaml:"project,omitempty"`
 	Host      string            `yaml:"host,omitempty"`
 	Port      int               `yaml:"port,omitempty"`
-	Scheme    string            `yaml:"scheme,omitempty"`
 	Remotes   map[string]string `yaml:"remotes,omitempty"`
 
 	BasePath string `yaml:"base_path,omitempty"`
-	ApiURL   string `yaml:"api_url,omitempty"`
 }
 
 func Path(rootDir string) string {
