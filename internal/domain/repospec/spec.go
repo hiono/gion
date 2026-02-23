@@ -1,6 +1,7 @@
 package repospec
 
 import (
+	"strconv"
 	"strings"
 
 	corerepospec "github.com/hiono/gion-core/repospec"
@@ -65,18 +66,32 @@ func (s RepoSpec) IsGitLab() bool {
 }
 
 func (s RepoSpec) ToCoreSpec() corerepospec.Spec {
+	var portStr string
+	if s.Port > 0 {
+		portStr = strconv.Itoa(s.Port)
+	}
 	return corerepospec.Spec{
 		Host:    s.Host,
+		Port:    portStr,
 		Owner:   s.Owner,
 		Repo:    s.Repo,
 		RepoKey: s.RepoKey,
+		IsSSH:   s.IsSSH(),
 	}
 }
 
 func FromCoreSpec(core corerepospec.Spec) RepoSpec {
+	var port int
+	if core.Port != "" {
+		port, _ = strconv.Atoi(core.Port)
+	}
+	if core.IsSSH && port == 0 {
+		port = 22
+	}
 	return RepoSpec{
 		Endpoint: Endpoint{
 			Host: core.Host,
+			Port: port,
 		},
 		Owner:     core.Owner,
 		Repo:      core.Repo,
