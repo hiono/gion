@@ -169,6 +169,11 @@ func isGitHubHost(host string) bool {
 	return strings.Contains(lower, "github")
 }
 
+func isGitLabHost(host string) bool {
+	lower := strings.ToLower(strings.TrimSpace(host))
+	return strings.Contains(lower, "gitlab")
+}
+
 type githubIssueItem struct {
 	Number      int             `json:"number"`
 	Title       string          `json:"title"`
@@ -506,32 +511,66 @@ func parsePRURL(raw string) (prRequest, error) {
 	if host == "" {
 		return prRequest{}, fmt.Errorf("invalid PR URL host: %s", raw)
 	}
-	if !isGitHubHost(host) {
-		return prRequest{}, fmt.Errorf("unsupported PR host: %s", host)
-	}
+
 	parts := strings.Split(strings.Trim(u.Path, "/"), "/")
 	if len(parts) < 4 {
 		return prRequest{}, fmt.Errorf("invalid PR/MR URL path: %s", u.Path)
 	}
 
-	// GitHub style: /owner/repo/pull/123
-	for i := 0; i < len(parts)-1; i++ {
-		if parts[i] == "pull" && i >= 2 {
-			num, err := strconv.Atoi(parts[i+1])
-			if err != nil {
-				return prRequest{}, fmt.Errorf("invalid PR number: %s", parts[i+1])
+	// GitLab style: /group/project/-/merge_requests/123 or /group/project/merge_requests/123
+	if isGitLabHost(host) {
+		for i := 0; i < len(parts)-1; i++ {
+			if (parts[i] == "merge_requests" || parts[i] == "-") && i >= 2 {
+				if parts[i] == "-" && i+1 < len(parts) && parts[i+1] == "merge_requests" {
+					num, err := strconv.Atoi(parts[i+2])
+					if err != nil {
+						return prRequest{}, fmt.Errorf("invalid MR number: %s", parts[i+2])
+					}
+					return prRequest{
+						Provider: "gitlab",
+						Host:     host,
+						Owner:    strings.Join(parts[:i], "/"),
+						Repo:     parts[i-1],
+						Number:   num,
+					}, nil
+				} else if parts[i] == "merge_requests" {
+					num, err := strconv.Atoi(parts[i+1])
+					if err != nil {
+						return prRequest{}, fmt.Errorf("invalid MR number: %s", parts[i+1])
+					}
+					return prRequest{
+						Provider: "gitlab",
+						Host:     host,
+						Owner:    strings.Join(parts[:i-1], "/"),
+						Repo:     parts[i-1],
+						Number:   num,
+					}, nil
+				}
 			}
-			return prRequest{
-				Provider: "github",
-				Host:     host,
-				Owner:    parts[i-2],
-				Repo:     parts[i-1],
-				Number:   num,
-			}, nil
+		}
+		return prRequest{}, fmt.Errorf("unsupported GitLab MR URL format: %s", raw)
+	}
+
+	// GitHub style: /owner/repo/pull/123
+	if isGitHubHost(host) {
+		for i := 0; i < len(parts)-1; i++ {
+			if parts[i] == "pull" && i >= 2 {
+				num, err := strconv.Atoi(parts[i+1])
+				if err != nil {
+					return prRequest{}, fmt.Errorf("invalid PR number: %s", parts[i+1])
+				}
+				return prRequest{
+					Provider: "github",
+					Host:     host,
+					Owner:    parts[i-2],
+					Repo:     parts[i-1],
+					Number:   num,
+				}, nil
+			}
 		}
 	}
 
-	return prRequest{}, fmt.Errorf("unsupported PR/MR URL: %s", raw)
+	return prRequest{}, fmt.Errorf("unsupported PR/MR host: %s", host)
 }
 
 func buildRepoURLFromParts(host, owner, repoName string) string {
@@ -552,6 +591,11 @@ func buildIssueURLFromParts(host, owner, repoName string, number int) string {
 func buildPRURLFromParts(host, owner, repoName string, number int) string {
 	repoName = strings.TrimSuffix(repoName, ".git")
 	return fmt.Sprintf("https://%s/%s/%s/pull/%d", host, owner, repoName, number)
+}
+
+func buildMRURLFromParts(host, owner, repoName string, number int) string {
+	repoName = strings.TrimSuffix(repoName, ".git")
+	return fmt.Sprintf("https://%s/%s/%s/-/merge_requests/%d", host, owner, repoName, number)
 }
 
 func formatPRBaseRef(baseBranch string) string {

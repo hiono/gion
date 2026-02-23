@@ -19,7 +19,10 @@ func TestParsePRURLUnsupported(t *testing.T) {
 	if _, err := parsePRURL("https://example.com/foo/bar"); err == nil {
 		t.Fatalf("expected error for unsupported host/path")
 	}
-	if _, err := parsePRURL("https://gitlab.com/owner/repo/-/merge_requests/1"); err == nil {
-		t.Fatalf("expected error for unsupported host")
+	// GitLab MR is now supported
+	if mr, err := parsePRURL("https://gitlab.com/owner/repo/-/merge_requests/1"); err != nil {
+		t.Fatalf("expected GitLab MR URL to be supported: %v", err)
+	} else if mr.Provider != "gitlab" || mr.Number != 1 {
+		t.Fatalf("unexpected MR result: %+v", mr)
 	}
 }
