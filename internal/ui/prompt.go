@@ -207,7 +207,7 @@ func (m *createFlowModel) startMode(mode, presetName string) {
 		m.presetModel = newInputsModelWithLabel(m.title, m.presets, presetName, m.defaultWorkspaceID, "preset", m.validateWorkspaceID, m.theme, m.useColor)
 	case "review":
 		if len(m.reviewRepos) == 0 {
-			m.err = fmt.Errorf("no GitHub repos found")
+			m.err = fmt.Errorf("no repos with supported providers found")
 			return
 		}
 		m.mode = mode
@@ -605,8 +605,8 @@ func (m createFlowModel) filterModes() []PromptChoice {
 	q := strings.ToLower(strings.TrimSpace(m.modeInput.Value()))
 	choices := []PromptChoice{
 		{Label: "repo", Value: "repo", Description: "1 repo only"},
-		{Label: "issue", Value: "issue", Description: "From an issue (multi-select, GitHub only)"},
-		{Label: "review", Value: "review", Description: "From a review request (multi-select, GitHub only)"},
+		{Label: "issue", Value: "issue", Description: "From an issue (multi-select)"},
+		{Label: "review", Value: "review", Description: "From a review request (multi-select)"},
 		{Label: "preset", Value: "preset", Description: "From preset"},
 	}
 	if q == "" {

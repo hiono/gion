@@ -31,7 +31,7 @@ func TestDetectProvider(t *testing.T) {
 }
 
 func TestRepoSpec_IsGitHub(t *testing.T) {
-	spec := RepoSpec{Provider: ProviderGitHub}
+	spec := RepoSpec{Endpoint: Endpoint{Provider: ProviderGitHub}}
 	if !spec.IsGitHub() {
 		t.Error("IsGitHub() should return true for GitHub provider")
 	}
@@ -41,7 +41,7 @@ func TestRepoSpec_IsGitHub(t *testing.T) {
 }
 
 func TestRepoSpec_IsGitLab(t *testing.T) {
-	spec := RepoSpec{Provider: ProviderGitLab}
+	spec := RepoSpec{Endpoint: Endpoint{Provider: ProviderGitLab}}
 	if !spec.IsGitLab() {
 		t.Error("IsGitLab() should return true for GitLab provider")
 	}
@@ -52,11 +52,10 @@ func TestRepoSpec_IsGitLab(t *testing.T) {
 
 func TestRepoSpec_ToCoreSpec(t *testing.T) {
 	spec := RepoSpec{
-		Endpoint:  Endpoint{Host: "gitlab.company.com", Port: 2222},
+		Endpoint:  Endpoint{Host: "gitlab.company.com", Port: 2222, Provider: ProviderGitLab},
 		Owner:     "group/subgroup",
 		Repo:      "project",
 		RepoKey:   "gitlab.company.com/group/subgroup/project.git",
-		Provider:  ProviderGitLab,
 		Namespace: "group/subgroup",
 		Project:   "project",
 	}

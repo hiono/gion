@@ -25,9 +25,10 @@ func (p Provider) IsValid() bool {
 }
 
 type Endpoint struct {
-	Host     string `yaml:"host,omitempty"`
-	Port     int    `yaml:"port,omitempty"`
-	BasePath string `yaml:"base_path,omitempty"`
+	Host     string   `yaml:"host,omitempty"`
+	Port     int      `yaml:"port,omitempty"`
+	BasePath string   `yaml:"base_path,omitempty"`
+	Provider Provider `yaml:"provider,omitempty"`
 }
 
 func (e Endpoint) IsSSH() bool {
@@ -45,24 +46,17 @@ type RepoSpec struct {
 	Owner     string
 	Repo      string
 	RepoKey   string
-	Provider  Provider
 	Namespace string
 	Project   string
 	Endpoint  `yaml:",inline"`
 }
 
-// Owner vs Namespace semantics:
-//   - GitHub: uses Owner (single user/org) + Repo
-//   - GitLab: uses Namespace (group/subgroup path, variable length) + Project/Repo
-//   - When converting from ParsedURL, set both Owner and Namespace to the same value
-//     for compatibility, but providers use the appropriate field for their semantics.
-
 func (s RepoSpec) IsGitHub() bool {
-	return s.Provider == ProviderGitHub
+	return s.Endpoint.Provider == ProviderGitHub
 }
 
 func (s RepoSpec) IsGitLab() bool {
-	return s.Provider == ProviderGitLab
+	return s.Endpoint.Provider == ProviderGitLab
 }
 
 func (s RepoSpec) ToCoreSpec() corerepospec.Spec {
@@ -107,7 +101,7 @@ func SpecFromKeyWithBasePath(repoKey string, basePath string) (RepoSpec, error) 
 		return RepoSpec{}, err
 	}
 	spec := FromCoreSpec(core)
-	spec.Provider = DetectProvider(spec.Host)
+	spec.Endpoint.Provider = DetectProvider(spec.Host)
 	spec.BasePath = basePath
 	return spec, nil
 }

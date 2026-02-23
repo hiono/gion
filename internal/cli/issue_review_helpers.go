@@ -575,7 +575,7 @@ func parsePRURL(raw string) (prRequest, error) {
 		}
 	}
 
-	return prRequest{}, fmt.Errorf("unsupported PR/MR host: %s", host)
+	return prRequest{}, fmt.Errorf("unsupported host: %s (use --provider flag to specify: gitlab, github, or bitbucket)", host)
 }
 
 func buildRepoURLFromParts(host, owner, repoName string) string {

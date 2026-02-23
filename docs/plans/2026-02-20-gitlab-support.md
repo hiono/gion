@@ -465,3 +465,117 @@ Example: `github.com/user/repo`
 | `internal/cli/completion.go` | bash/zsh completion for --provider |
 | `internal/domain/repospec/spec.go` | GION_DEFAULT_PROVIDER removed |
 | `internal/domain/manifest/manifest.go` | Provider field (already exists) |
+
+---
+
+## Provider Survey Results (2026-02-23)
+
+### Code Comparison: Main vs gitlab Branch
+
+#### manifest.go Schema
+
+| Feature                      | Main Repository                   | gitlab Branch                                     |
+| ---------------------------- | --------------------------------- | ------------------------------------------------- |
+| `Repo.Provider` field        | Not present                       | `string yaml:"provider,omitempty"`                |
+| `Repo.Namespace` field       | Not present                       | `string yaml:"namespace,omitempty"`               |
+| `Repo.Project` field         | Not present                       | `string yaml:"project,omitempty"`                 |
+| `Repo.BasePath` field        | Not present                       | `string yaml:"base_path,omitempty"`               |
+| `PresetRepo` struct          | Not present                       | New struct with Provider/BasePath support         |
+| `PresetRepo.UnmarshalYAML`   | N/A                               | Auto-converts string repos to struct form         |
+
+#### repospec Package
+
+| Feature                      | Main Repository                   | gitlab Branch                                     |
+| ---------------------------- | --------------------------------- | ------------------------------------------------- |
+| `spec.go` file               | Not present                       | New file with RepoSpec, Provider, Endpoint types  |
+| `DetectProvider()` function  | N/A                               | Host-based provider detection                     |
+| `NormalizeWithBasePath()`    | N/A                               | Subdirectory URL support                          |
+| gion-core dependency         | `github.com/tasuku43/gion-core`   | `github.com/hiono/gion-core` (fork)               |
+
+#### CLI Provider Handling
+
+| Feature                      | Main Repository                   | gitlab Branch                                     |
+| ---------------------------- | --------------------------------- | ------------------------------------------------- |
+| `--provider` flag            | Not present                       | Added to manifest add                             |
+| `--base-path` flag           | Not present                       | Added to manifest add                             |
+| `gitlab_provider.go`         | Not present                       | New file with glab CLI integration                |
+| `ProviderByName()`           | Private function (`providerByName`) | Public function with registry                    |
+| `RegisterProvider()`         | Not present                       | Public registry for provider extensions           |
+| ISP compliance               | Single interface                  | Separated: IssueFetcher, MRFetcher, URLBuilder    |
+
+#### preset Package
+
+| Feature                      | Main Repository                   | gitlab Branch                                     |
+| ---------------------------- | --------------------------------- | ------------------------------------------------- |
+| `NormalizeRepos()`           | String array only                 | String array (deprecated)                         |
+| `NormalizePresetRepos()`     | N/A                               | New function for PresetRepo handling              |
+
+### Provider Detection Logic
+
+#### Automatic Detection (Fallback)
+
+```go
+// repospec/spec.go
+func DetectProvider(host string) Provider {
+    switch {
+    case containsProvider(host, "gitlab"):
+        return ProviderGitLab
+    case containsProvider(host, "bitbucket"):
+        return ProviderBitbucket
+    case containsProvider(host, "github"):
+        return ProviderGitHub
+    default:
+        return ProviderGitHub
+    }
+}
+```
+
+**Detection Rules:**
+
+| Host Pattern                       | Detected Provider |
+| ---------------------------------- | ----------------- |
+| `gitlab.com`                       | gitlab            |
+| `gitlab.example.com`               | gitlab            |
+| `example.com/gitlab` (subdomain)   | gitlab            |
+| `bitbucket.org`                    | bitbucket         |
+| `bitbucket.company.com`            | bitbucket         |
+| `github.com`                       | github            |
+| `github.enterprise.com`            | github            |
+| `custom-git-server.com` (no match) | github (default)  |
+
+#### Explicit Override (--provider flag)
+
+```
+gion manifest add --repo https://cpusys.mu.renesas.com/git/a0201089/gion-test \
+  --provider gitlab --base-path /git my-workspace
+```
+
+**Priority Order:**
+
+1. `--provider` flag (highest)
+2. Host-based auto-detection
+3. Default: github
+
+### Key Implementation Files
+
+| Category       | File                                     | Purpose                                      |
+| -------------- | ---------------------------------------- | -------------------------------------------- |
+| **Schema**     | `internal/domain/manifest/manifest.go`   | Repo/PresetRepo struct with Provider fields  |
+| **Detection**  | `internal/domain/repospec/spec.go`       | Provider type, DetectProvider function       |
+| **GitLab**     | `internal/cli/gitlab_provider.go`        | GitLab implementation (glab CLI wrapper)     |
+| **GitHub**     | `internal/cli/provider.go`               | GitHub implementation (gh CLI wrapper)       |
+| **Interface**  | `internal/cli/provider.go`               | ISP interfaces (IssueFetcher, MRFetcher, etc)|
+| **CLI Flags**  | `internal/cli/manifest_add.go`           | --provider, --base-path flag handling        |
+| **Preset**     | `internal/domain/preset/preset.go`       | NormalizePresetRepos for PresetRepo handling |
+
+### Backward Compatibility
+
+- **String preset repos**: Automatically converted to `PresetRepo{Repo: "..."}`
+- **GitHub repos**: No Provider field needed (auto-detected)
+- **Existing gion.yaml**: Works without modification for GitHub
+
+### Recommendations
+
+1. **Documentation**: Add user guide for custom GitLab instances
+2. **Testing**: Add integration tests for subdirectory GitLab URLs
+3. **Validation**: Ensure error messages suggest `--provider` flag for unknown hosts

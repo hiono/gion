@@ -174,9 +174,6 @@ func runManifestAdd(ctx context.Context, rootDir string, args []string, globalNo
 			if !ok {
 				return nil, fmt.Errorf("selected repo not found")
 			}
-			if strings.ToLower(selected.Provider) != "github" {
-				return nil, fmt.Errorf("issue picker supports GitHub only for now: %s", selected.Host)
-			}
 			provider, err := ProviderByName(selected.Provider)
 			if err != nil {
 				return nil, err
@@ -714,7 +711,7 @@ func manifestAddIssueURL(ctx context.Context, rootDir, issueURL, branch, baseRef
 	}
 	provider, err := ProviderByName(req.Provider)
 	if err != nil {
-		return fmt.Errorf("unsupported issue provider: %s", req.Provider)
+		return fmt.Errorf("unsupported issue provider: %s (available providers: gitlab, github, bitbucket)", req.Provider)
 	}
 	spec := repospec.RepoSpec{Endpoint: repospec.Endpoint{Host: req.Host}, Owner: req.Owner, Repo: req.Repo}
 	issue, err := provider.FetchIssue(ctx, spec, req.Number)
@@ -789,9 +786,6 @@ func manifestAddIssueSelected(ctx context.Context, rootDir string, repoSpec stri
 	spec, _, err := repo.Normalize(repoSpec)
 	if err != nil {
 		return err
-	}
-	if !isGitHubHost(spec.Host) {
-		return fmt.Errorf("issue picker supports GitHub only for now: %s", spec.Host)
 	}
 	host := strings.TrimSpace(spec.Host)
 	owner := strings.TrimSpace(spec.Owner)
