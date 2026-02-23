@@ -71,7 +71,7 @@ func NormalizePresetRepos(repos []manifest.PresetRepo) []manifest.PresetRepo {
 			continue
 		}
 		repo.Repo = trimmed
-		key := repo.Repo
+		key := fmt.Sprintf("%s|%s", repo.Repo, repo.BasePath)
 		if _, ok := seen[key]; ok {
 			continue
 		}
