@@ -110,7 +110,9 @@ type createFlowModel struct {
 	branches           []string
 	branchModel        branchInputModel
 	reviewRepos        []PromptChoice
+	reviewErr          error
 	issueRepos         []PromptChoice
+	issueErr           error
 	repoChoices        []PromptChoice
 	repoErr            error
 	defaultWorkspaceID string
@@ -138,7 +140,7 @@ type createFlowModel struct {
 	useColor bool
 }
 
-func newCreateFlowModel(title string, presets []string, tmplErr error, repoChoices []PromptChoice, repoErr error, defaultWorkspaceID string, presetName string, reviewRepos []PromptChoice, issueRepos []PromptChoice, loadReview func(string) ([]PromptChoice, error), loadIssue func(string) ([]PromptChoice, error), loadPresetRepos func(string) ([]string, error), onReposResolved func([]string), validateBranch func(string) error, validateWorkspaceID func(string) error, theme Theme, useColor bool, startMode string, selectedRepo string) createFlowModel {
+func newCreateFlowModel(title string, presets []string, tmplErr error, repoChoices []PromptChoice, repoErr error, defaultWorkspaceID string, presetName string, reviewRepos []PromptChoice, reviewErr error, issueRepos []PromptChoice, issueErr error, loadReview func(string) ([]PromptChoice, error), loadIssue func(string) ([]PromptChoice, error), loadPresetRepos func(string) ([]string, error), onReposResolved func([]string), validateBranch func(string) error, validateWorkspaceID func(string) error, theme Theme, useColor bool, startMode string, selectedRepo string) createFlowModel {
 	input := textinput.New()
 	input.Prompt = ""
 	input.Placeholder = "search"
@@ -156,7 +158,9 @@ func newCreateFlowModel(title string, presets []string, tmplErr error, repoChoic
 		title:               title,
 		modeInput:           input,
 		reviewRepos:         reviewRepos,
+		reviewErr:           reviewErr,
 		issueRepos:          issueRepos,
+		issueErr:            issueErr,
 		loadReviewPRs:       loadReview,
 		loadIssueChoices:    loadIssue,
 		loadPresetRepos:     loadPresetRepos,
@@ -206,6 +210,10 @@ func (m *createFlowModel) startMode(mode, presetName string) {
 		m.stage = createStagePreset
 		m.presetModel = newInputsModelWithLabel(m.title, m.presets, presetName, m.defaultWorkspaceID, "preset", m.validateWorkspaceID, m.theme, m.useColor)
 	case "review":
+		if m.reviewErr != nil {
+			m.err = m.reviewErr
+			return
+		}
 		if len(m.reviewRepos) == 0 {
 			m.err = fmt.Errorf("no repos with supported providers found")
 			return
@@ -214,8 +222,12 @@ func (m *createFlowModel) startMode(mode, presetName string) {
 		m.stage = createStageReviewRepo
 		m.reviewRepoModel = newChoiceSelectModel(m.title, "repo", m.reviewRepos, m.theme, m.useColor)
 	case "issue":
+		if m.issueErr != nil {
+			m.err = m.issueErr
+			return
+		}
 		if len(m.issueRepos) == 0 {
-			m.err = fmt.Errorf("no repos with supported hosts found")
+			m.err = fmt.Errorf("no repos with supported providers found")
 			return
 		}
 		m.mode = mode
@@ -311,6 +323,10 @@ func (m createFlowModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 					m.stage = createStagePreset
 					m.presetModel = newInputsModel(m.title, m.presets, "", "", m.theme, m.useColor)
 				case "review":
+					if m.reviewErr != nil {
+						m.err = m.reviewErr
+						return m, tea.Quit
+					}
 					if len(m.reviewRepos) == 0 {
 						m.err = fmt.Errorf("no repos with supported providers found")
 						return m, tea.Quit
@@ -318,8 +334,12 @@ func (m createFlowModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 					m.stage = createStageReviewRepo
 					m.reviewRepoModel = newChoiceSelectModel(m.title, "repo", m.reviewRepos, m.theme, m.useColor)
 				case "issue":
+					if m.issueErr != nil {
+						m.err = m.issueErr
+						return m, tea.Quit
+					}
 					if len(m.issueRepos) == 0 {
-						m.err = fmt.Errorf("no repos with supported hosts found")
+						m.err = fmt.Errorf("no repos with supported providers found")
 						return m, tea.Quit
 					}
 					m.stage = createStageIssueRepo

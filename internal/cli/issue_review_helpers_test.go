@@ -2,11 +2,162 @@ package cli
 
 import (
 	"context"
+	"errors"
+	"os"
+	"path/filepath"
 	"testing"
 
 	"github.com/tasuku43/gion/internal/domain/manifest"
 	"github.com/tasuku43/gion/internal/domain/repospec"
 )
+
+func TestBuildIssueRepoChoices_NoRepos(t *testing.T) {
+	rootDir := t.TempDir()
+	_, err := buildIssueRepoChoices(rootDir)
+	if err == nil {
+		t.Fatal("expected error when no repos found")
+	}
+	if !errors.Is(err, ErrNoReposFound) {
+		t.Errorf("expected ErrNoReposFound, got %v", err)
+	}
+}
+
+func TestBuildIssueRepoChoices_ManifestMissingWithRepos(t *testing.T) {
+	rootDir := t.TempDir()
+	bareDir := filepath.Join(rootDir, "bare")
+	if err := os.MkdirAll(bareDir, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	repoDir := filepath.Join(bareDir, "github.com", "owner", "repo.git")
+	if err := os.MkdirAll(repoDir, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	headFile := filepath.Join(repoDir, "HEAD")
+	if err := os.WriteFile(headFile, []byte("ref: refs/heads/main\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	_, err := buildIssueRepoChoices(rootDir)
+	if err == nil {
+		t.Fatal("expected error when manifest missing")
+	}
+	if !errors.Is(err, ErrManifestRequired) {
+		t.Errorf("expected ErrManifestRequired, got %v", err)
+	}
+}
+
+func TestBuildIssueRepoChoices_Success(t *testing.T) {
+	rootDir := t.TempDir()
+	bareDir := filepath.Join(rootDir, "bare")
+	if err := os.MkdirAll(bareDir, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	repoDir := filepath.Join(bareDir, "github.com", "owner", "repo.git")
+	if err := os.MkdirAll(repoDir, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	headFile := filepath.Join(repoDir, "HEAD")
+	if err := os.WriteFile(headFile, []byte("ref: refs/heads/main\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	manifestContent := `
+version: 1
+workspaces:
+  TEST-1:
+    mode: repo
+    repos:
+      - alias: repo
+        repo_key: github.com/owner/repo.git
+        branch: TEST-1
+        provider: github
+`
+	if err := os.WriteFile(filepath.Join(rootDir, "gion.yaml"), []byte(manifestContent), 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	choices, err := buildIssueRepoChoices(rootDir)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if len(choices) != 1 {
+		t.Errorf("expected 1 choice, got %d", len(choices))
+	}
+}
+
+func TestBuildReviewRepoChoices_NoRepos(t *testing.T) {
+	rootDir := t.TempDir()
+	_, err := buildReviewRepoChoices(rootDir)
+	if err == nil {
+		t.Fatal("expected error when no repos found")
+	}
+	if !errors.Is(err, ErrNoReposFound) {
+		t.Errorf("expected ErrNoReposFound, got %v", err)
+	}
+}
+
+func TestBuildReviewRepoChoices_ManifestMissingWithRepos(t *testing.T) {
+	rootDir := t.TempDir()
+	bareDir := filepath.Join(rootDir, "bare")
+	if err := os.MkdirAll(bareDir, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	repoDir := filepath.Join(bareDir, "github.com", "owner", "repo.git")
+	if err := os.MkdirAll(repoDir, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	headFile := filepath.Join(repoDir, "HEAD")
+	if err := os.WriteFile(headFile, []byte("ref: refs/heads/main\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	_, err := buildReviewRepoChoices(rootDir)
+	if err == nil {
+		t.Fatal("expected error when manifest missing")
+	}
+	if !errors.Is(err, ErrManifestRequired) {
+		t.Errorf("expected ErrManifestRequired, got %v", err)
+	}
+}
+
+func TestBuildReviewRepoChoices_Success(t *testing.T) {
+	rootDir := t.TempDir()
+	bareDir := filepath.Join(rootDir, "bare")
+	if err := os.MkdirAll(bareDir, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	repoDir := filepath.Join(bareDir, "github.com", "owner", "repo.git")
+	if err := os.MkdirAll(repoDir, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	headFile := filepath.Join(repoDir, "HEAD")
+	if err := os.WriteFile(headFile, []byte("ref: refs/heads/main\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	manifestContent := `
+version: 1
+workspaces:
+  TEST-1:
+    mode: repo
+    repos:
+      - alias: repo
+        repo_key: github.com/owner/repo.git
+        branch: TEST-1
+        provider: github
+`
+	if err := os.WriteFile(filepath.Join(rootDir, "gion.yaml"), []byte(manifestContent), 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	choices, err := buildReviewRepoChoices(rootDir)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if len(choices) != 1 {
+		t.Errorf("expected 1 choice, got %d", len(choices))
+	}
+}
 
 func TestResolveEndpoint(t *testing.T) {
 	ctx := context.Background()

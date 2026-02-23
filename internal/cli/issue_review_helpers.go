@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"net/url"
 	"os/exec"
@@ -15,6 +16,12 @@ import (
 	"github.com/tasuku43/gion/internal/domain/repospec"
 	"github.com/tasuku43/gion/internal/infra/debuglog"
 	"github.com/tasuku43/gion/internal/ui"
+)
+
+var (
+	ErrNoReposFound     = errors.New("no repos found. Run `gion init` to initialize")
+	ErrManifestRequired = errors.New("gion.yaml not found. Run `gion init` to initialize")
+	ErrNoSupportedRepos = errors.New("no repos with supported providers found. Check gion.yaml configuration")
 )
 
 type issueRepoChoice struct {
@@ -36,11 +43,15 @@ func buildIssueRepoChoices(rootDir string) ([]issueRepoChoice, error) {
 	if err != nil {
 		return nil, err
 	}
-
-	epByRepoKey := make(map[string]repospec.Endpoint)
-	if mf, err := manifest.Load(rootDir); err == nil {
-		epByRepoKey = mf.EndpointByRepoKey()
+	if len(repos) == 0 {
+		return nil, ErrNoReposFound
 	}
+
+	mf, err := manifest.Load(rootDir)
+	if err != nil {
+		return nil, ErrManifestRequired
+	}
+	epByRepoKey := mf.EndpointByRepoKey()
 
 	var choices []issueRepoChoice
 	for _, entry := range repos {
@@ -68,6 +79,10 @@ func buildIssueRepoChoices(rootDir string) ([]issueRepoChoice, error) {
 			Owner:    owner,
 			Repo:     repoName,
 		})
+	}
+
+	if len(choices) == 0 {
+		return nil, ErrNoSupportedRepos
 	}
 	return choices, nil
 }
@@ -121,11 +136,15 @@ func buildReviewRepoChoices(rootDir string) ([]reviewRepoChoice, error) {
 	if err != nil {
 		return nil, err
 	}
-
-	epByRepoKey := make(map[string]repospec.Endpoint)
-	if mf, err := manifest.Load(rootDir); err == nil {
-		epByRepoKey = mf.EndpointByRepoKey()
+	if len(repos) == 0 {
+		return nil, ErrNoReposFound
 	}
+
+	mf, err := manifest.Load(rootDir)
+	if err != nil {
+		return nil, ErrManifestRequired
+	}
+	epByRepoKey := mf.EndpointByRepoKey()
 
 	var choices []reviewRepoChoice
 	for _, entry := range repos {
@@ -143,7 +162,7 @@ func buildReviewRepoChoices(rootDir string) ([]reviewRepoChoice, error) {
 		host := parts[0]
 		owner := parts[1]
 		repoName := parts[2]
-		label := fmt.Sprintf("%s (%s/%s)", repoName, host, repoName)
+		label := fmt.Sprintf("%s (%s)", repoName, repoKey)
 		repoURL := buildRepoURLFromParts(host, owner, repoName)
 		value := repoSpecFromKey(entry.RepoKey)
 		choices = append(choices, reviewRepoChoice{
@@ -155,6 +174,10 @@ func buildReviewRepoChoices(rootDir string) ([]reviewRepoChoice, error) {
 			Repo:     repoName,
 			RepoURL:  repoURL,
 		})
+	}
+
+	if len(choices) == 0 {
+		return nil, ErrNoSupportedRepos
 	}
 	return choices, nil
 }
