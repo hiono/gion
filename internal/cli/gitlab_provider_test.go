@@ -118,7 +118,7 @@ type mockExecutor struct {
 func (m *mockExecutor) Execute(ctx context.Context, name string, args ...string) ([]byte, []byte, error) {
 	key := name + " " + args[0]
 	if resp, ok := m.responses[key]; ok {
-		return resp, nil, m.errors[key]
+		return resp, nil, nil
 	}
 	return nil, nil, m.errors[key]
 }
@@ -193,5 +193,48 @@ func TestGitLabProvider_Name(t *testing.T) {
 	p := gitlabProvider{}
 	if p.Name() != "gitlab" {
 		t.Errorf("Name() = %q, want 'gitlab'", p.Name())
+	}
+}
+
+func TestResolveGitLabAPIEndpoint(t *testing.T) {
+	tests := []struct {
+		name string
+		spec repospec.RepoSpec
+		want string
+	}{
+		{
+			name: "api_url takes precedence",
+			spec: repospec.RepoSpec{Host: "gitlab.com", BasePath: "/gitlab", ApiURL: "https://custom.api.com/v4"},
+			want: "https://custom.api.com/v4",
+		},
+		{
+			name: "base_path fallback",
+			spec: repospec.RepoSpec{Host: "example.com", BasePath: "/gitlab"},
+			want: "https://example.com/gitlab",
+		},
+		{
+			name: "base_path with leading and trailing slashes trimmed",
+			spec: repospec.RepoSpec{Host: "example.com", BasePath: "///gitlab///"},
+			want: "https://example.com/gitlab",
+		},
+		{
+			name: "host only fallback",
+			spec: repospec.RepoSpec{Host: "gitlab.com"},
+			want: "gitlab.com",
+		},
+		{
+			name: "empty host returns empty",
+			spec: repospec.RepoSpec{Host: ""},
+			want: "",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got := resolveGitLabAPIEndpoint(tt.spec)
+			if got != tt.want {
+				t.Errorf("resolveGitLabAPIEndpoint() = %q, want %q", got, tt.want)
+			}
+		})
 	}
 }
