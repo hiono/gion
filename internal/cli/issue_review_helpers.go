@@ -36,6 +36,13 @@ func buildIssueRepoChoices(rootDir string) ([]issueRepoChoice, error) {
 	if err != nil {
 		return nil, err
 	}
+
+	mf, err := manifest.Load(rootDir)
+	if err != nil {
+		return nil, err
+	}
+	epByRepoKey := mf.EndpointByRepoKey()
+
 	var choices []issueRepoChoice
 	for _, entry := range repos {
 		repoKey := displayRepoKey(entry.RepoKey)
@@ -43,10 +50,13 @@ func buildIssueRepoChoices(rootDir string) ([]issueRepoChoice, error) {
 		if len(parts) < 3 {
 			continue
 		}
-		host := parts[0]
-		if !isGitHubHost(host) {
+
+		ep, ok := epByRepoKey[entry.RepoKey]
+		if !ok || ep.Provider == "" {
 			continue
 		}
+
+		host := parts[0]
 		owner := parts[1]
 		repoName := parts[2]
 		label := fmt.Sprintf("%s (%s)", repoName, repoKey)
@@ -54,7 +64,7 @@ func buildIssueRepoChoices(rootDir string) ([]issueRepoChoice, error) {
 		choices = append(choices, issueRepoChoice{
 			Label:    label,
 			Value:    value,
-			Provider: "github",
+			Provider: string(ep.Provider),
 			Host:     host,
 			Owner:    owner,
 			Repo:     repoName,
@@ -112,6 +122,13 @@ func buildReviewRepoChoices(rootDir string) ([]reviewRepoChoice, error) {
 	if err != nil {
 		return nil, err
 	}
+
+	mf, err := manifest.Load(rootDir)
+	if err != nil {
+		return nil, err
+	}
+	epByRepoKey := mf.EndpointByRepoKey()
+
 	var choices []reviewRepoChoice
 	for _, entry := range repos {
 		repoKey := displayRepoKey(entry.RepoKey)
@@ -119,19 +136,22 @@ func buildReviewRepoChoices(rootDir string) ([]reviewRepoChoice, error) {
 		if len(parts) < 3 {
 			continue
 		}
+
+		ep, ok := epByRepoKey[entry.RepoKey]
+		if !ok || ep.Provider == "" {
+			continue
+		}
+
 		host := parts[0]
 		owner := parts[1]
 		repoName := parts[2]
-		if !isGitHubHost(host) {
-			continue
-		}
-		label := fmt.Sprintf("%s (%s/%s)", repoName, owner, repoName)
+		label := fmt.Sprintf("%s (%s/%s)", repoName, host, repoName)
 		repoURL := buildRepoURLFromParts(host, owner, repoName)
 		value := repoSpecFromKey(entry.RepoKey)
 		choices = append(choices, reviewRepoChoice{
 			Label:    label,
 			Value:    value,
-			Provider: "github",
+			Provider: string(ep.Provider),
 			Host:     host,
 			Owner:    owner,
 			Repo:     repoName,

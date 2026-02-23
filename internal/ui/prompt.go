@@ -312,7 +312,7 @@ func (m createFlowModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 					m.presetModel = newInputsModel(m.title, m.presets, "", "", m.theme, m.useColor)
 				case "review":
 					if len(m.reviewRepos) == 0 {
-						m.err = fmt.Errorf("no GitHub repos found")
+						m.err = fmt.Errorf("no repos with supported providers found")
 						return m, tea.Quit
 					}
 					m.stage = createStageReviewRepo

@@ -7,6 +7,7 @@ import (
 	"path/filepath"
 	"strings"
 
+	"github.com/tasuku43/gion/internal/domain/repospec"
 	"gopkg.in/yaml.v3"
 )
 
@@ -148,6 +149,24 @@ type EndpointInfo struct {
 	Port     int
 	BasePath string
 	Provider string
+}
+
+func (f File) EndpointByRepoKey() map[string]repospec.Endpoint {
+	result := make(map[string]repospec.Endpoint)
+	for _, ws := range f.Workspaces {
+		for _, repo := range ws.Repos {
+			if repo.RepoKey == "" || repo.Provider == "" {
+				continue
+			}
+			result[repo.RepoKey] = repospec.Endpoint{
+				Host:     repo.Host,
+				Port:     repo.Port,
+				BasePath: repo.BasePath,
+				Provider: repospec.Provider(repo.Provider),
+			}
+		}
+	}
+	return result
 }
 
 func (f File) FindEndpointsByHost(host string) []EndpointInfo {
