@@ -423,10 +423,9 @@ Updated fork at `github.com/hiono/gion-core` with:
 
 ### Design Decisions
 
-- `--provider` flag added: `github`, `gitlab`, `bitbucket`
-- `--base-path` validation: Only valid for GitLab or Bitbucket (with `--repo` or `--issue` or `--review`)
-- `GION_DEFAULT_PROVIDER` removed: Not in original gion-core
-- `--base-path` with Issue/MR URLs: Supported for custom domain GitLab instances
+- `--provider` flag: `github`, `gitlab`, `bitbucket`
+- `--base-path`: Valid for GitLab or Bitbucket (with `--repo`, `--issue`, or `--review`)
+- GitHub URLs with `--base-path`: Silently ignored (no error, no warning)
 
 ### --base-path with Issue/MR URLs
 
