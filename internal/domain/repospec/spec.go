@@ -96,7 +96,5 @@ func DetectProvider(host string) Provider {
 }
 
 func containsProvider(host, name string) bool {
-	return len(host) >= len(name) && (host == name || host == name+".com" ||
-		(len(host) > len(name)+1 && host[len(host)-len(name)-1:] == "."+name) ||
-		strings.Contains(host, name))
+	return strings.Contains(strings.ToLower(host), name)
 }
