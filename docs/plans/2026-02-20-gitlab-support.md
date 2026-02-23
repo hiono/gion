@@ -424,8 +424,20 @@ Updated fork at `github.com/hiono/gion-core` with:
 ### Design Decisions
 
 - `--provider` flag added: `github`, `gitlab`, `bitbucket`
-- `--base-path` validation: Only valid for GitLab or Bitbucket
+- `--base-path` validation: Only valid for GitLab or Bitbucket (with `--repo` or `--issue` or `--review`)
 - `GION_DEFAULT_PROVIDER` removed: Not in original gion-core
+- `--base-path` with Issue/MR URLs: Supported for custom domain GitLab instances
+
+### --base-path with Issue/MR URLs
+
+For custom domain GitLab instances, `--base-path` can be used with `--issue` and `--review`:
+
+```bash
+gion manifest add --issue "https://host/git/group/repo/-/issues/1" \
+  --provider gitlab --base-path /git
+```
+
+For GitHub URLs, `--base-path` is silently ignored (no error, no warning).
 
 ### Combination Verification Table
 
@@ -453,7 +465,7 @@ Example: `github.com/user/repo`
 | --repo | --provider | --base-path | Auto-detect | Result    |
 | ------ | ---------- | ----------- | ----------- | --------- |
 | ✓      | -          | -           | github      | ✅ Success |
-| ✓      | -          | /git        | github      | ❌ Error  |
+| ✓      | -          | /git        | github      | ✅ Ignored   |
 
 ### Files Changed
 

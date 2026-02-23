@@ -142,3 +142,29 @@ func Marshal(file File) ([]byte, error) {
 	out := []byte(fmt.Sprintf("version: %d\n\n%s", file.Version, buf.String()))
 	return out, nil
 }
+
+type EndpointInfo struct {
+	Host     string
+	Port     int
+	BasePath string
+	Provider string
+}
+
+func (f File) FindEndpointsByHost(host string) []EndpointInfo {
+	var results []EndpointInfo
+	seen := make(map[string]bool)
+	for _, ws := range f.Workspaces {
+		for _, repo := range ws.Repos {
+			if repo.Host == host && !seen[repo.Host+repo.BasePath] {
+				seen[repo.Host+repo.BasePath] = true
+				results = append(results, EndpointInfo{
+					Host:     repo.Host,
+					Port:     repo.Port,
+					BasePath: repo.BasePath,
+					Provider: repo.Provider,
+				})
+			}
+		}
+	}
+	return results
+}

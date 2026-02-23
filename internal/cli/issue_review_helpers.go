@@ -10,7 +10,9 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/tasuku43/gion/internal/domain/manifest"
 	"github.com/tasuku43/gion/internal/domain/repo"
+	"github.com/tasuku43/gion/internal/domain/repospec"
 	"github.com/tasuku43/gion/internal/infra/debuglog"
 	"github.com/tasuku43/gion/internal/ui"
 )
@@ -429,20 +431,28 @@ func formatIssueWorkspaceID(owner, repo string, number int) string {
 }
 
 type issueRequest struct {
-	Provider string
-	Host     string
+	Endpoint repospec.Endpoint
 	Owner    string
 	Repo     string
 	Number   int
 }
 
-func parseIssueURL(raw string) (issueRequest, error) {
+func parseIssueURL(raw string, hint repospec.Endpoint) (issueRequest, error) {
 	u, err := url.Parse(raw)
 	if err != nil {
 		return issueRequest{}, fmt.Errorf("invalid issue URL: %w", err)
 	}
 	host := strings.TrimSpace(u.Hostname())
-	parts := strings.Split(strings.Trim(u.Path, "/"), "/")
+	urlPath := u.Path
+
+	provider := hint.Provider
+	basePath := hint.BasePath
+
+	if basePath != "" {
+		urlPath = strings.TrimPrefix(urlPath, basePath)
+	}
+
+	parts := strings.Split(strings.Trim(urlPath, "/"), "/")
 	if len(parts) < 4 {
 		return issueRequest{}, fmt.Errorf("invalid issue URL path: %s", u.Path)
 	}
@@ -463,113 +473,108 @@ func parseIssueURL(raw string) (issueRequest, error) {
 			return issueRequest{}, fmt.Errorf("invalid issue URL path: %s", u.Path)
 		}
 		ownerParts := parts[:repoIdx]
-		provider := issueProvider(host, repoIdx, i)
-		if provider == "gitlab" {
-			return issueRequest{
-				Provider: provider,
-				Host:     host,
-				Owner:    strings.Join(ownerParts, "/"),
-				Repo:     parts[repoIdx],
-				Number:   num,
-			}, nil
-		}
-		if len(ownerParts) != 1 {
-			return issueRequest{}, fmt.Errorf("invalid issue URL path: %s", u.Path)
+		if provider == "" {
+			provider = detectProviderFromHost(host)
 		}
 		return issueRequest{
-			Provider: provider,
-			Host:     host,
-			Owner:    ownerParts[0],
-			Repo:     parts[repoIdx],
-			Number:   num,
+			Endpoint: repospec.Endpoint{
+				Host:     host,
+				BasePath: basePath,
+				Provider: provider,
+			},
+			Owner:  strings.Join(ownerParts, "/"),
+			Repo:   parts[repoIdx],
+			Number: num,
 		}, nil
 	}
 
 	return issueRequest{}, fmt.Errorf("unsupported issue URL: %s", raw)
 }
 
-func issueProvider(host string, repoIdx, issueIdx int) string {
-	lowerHost := strings.ToLower(strings.TrimSpace(host))
-	if repoIdx < issueIdx-1 || strings.Contains(lowerHost, "gitlab") {
-		return "gitlab"
-	}
-	if strings.Contains(lowerHost, "bitbucket") {
-		return "bitbucket"
-	}
-	return "github"
-}
-
 type prRequest struct {
-	Provider string
-	Host     string
+	Endpoint repospec.Endpoint
 	Owner    string
 	Repo     string
 	Number   int
 }
 
-func parsePRURL(raw string) (prRequest, error) {
+func parsePRURL(raw string, hint repospec.Endpoint) (prRequest, error) {
 	u, err := url.Parse(raw)
 	if err != nil {
 		return prRequest{}, fmt.Errorf("invalid PR/MR URL: %w", err)
 	}
 	host := strings.TrimSpace(u.Hostname())
-	if host == "" {
-		return prRequest{}, fmt.Errorf("invalid PR URL host: %s", raw)
+	urlPath := u.Path
+
+	provider := hint.Provider
+	basePath := hint.BasePath
+
+	if basePath != "" {
+		urlPath = strings.TrimPrefix(urlPath, basePath)
 	}
 
-	parts := strings.Split(strings.Trim(u.Path, "/"), "/")
+	parts := strings.Split(strings.Trim(urlPath, "/"), "/")
 	if len(parts) < 4 {
 		return prRequest{}, fmt.Errorf("invalid PR/MR URL path: %s", u.Path)
 	}
 
-	// GitLab style: /group/project/-/merge_requests/123 or /group/project/merge_requests/123
-	if isGitLabHost(host) {
+	if provider == "" {
+		if isGitLabHost(host) {
+			provider = repospec.ProviderGitLab
+		} else if isGitHubHost(host) {
+			provider = repospec.ProviderGitHub
+		}
+	}
+
+	if provider == repospec.ProviderGitLab {
 		for i := 0; i < len(parts)-1; i++ {
-			if (parts[i] == "merge_requests" || parts[i] == "-") && i >= 2 {
-				if parts[i] == "-" && i+1 < len(parts) && parts[i+1] == "merge_requests" {
-					num, err := strconv.Atoi(parts[i+2])
-					if err != nil {
-						return prRequest{}, fmt.Errorf("invalid MR number: %s", parts[i+2])
-					}
-					return prRequest{
-						Provider: "gitlab",
-						Host:     host,
-						Owner:    strings.Join(parts[:i], "/"),
-						Repo:     parts[i-1],
-						Number:   num,
-					}, nil
-				} else if parts[i] == "merge_requests" {
-					num, err := strconv.Atoi(parts[i+1])
-					if err != nil {
-						return prRequest{}, fmt.Errorf("invalid MR number: %s", parts[i+1])
-					}
-					return prRequest{
-						Provider: "gitlab",
-						Host:     host,
-						Owner:    strings.Join(parts[:i-1], "/"),
-						Repo:     parts[i-1],
-						Number:   num,
-					}, nil
+			if parts[i] == "merge_requests" {
+				num, err := strconv.Atoi(parts[i+1])
+				if err != nil {
+					return prRequest{}, fmt.Errorf("invalid MR number: %s", parts[i+1])
 				}
+				repoIdx := i - 1
+				if repoIdx >= 1 && parts[repoIdx] == "-" {
+					repoIdx--
+				}
+				if repoIdx < 1 {
+					return prRequest{}, fmt.Errorf("invalid MR URL path: %s", u.Path)
+				}
+				ownerParts := parts[:repoIdx]
+				return prRequest{
+					Endpoint: repospec.Endpoint{
+						Host:     host,
+						BasePath: basePath,
+						Provider: provider,
+					},
+					Owner:  strings.Join(ownerParts, "/"),
+					Repo:   parts[repoIdx],
+					Number: num,
+				}, nil
 			}
 		}
 		return prRequest{}, fmt.Errorf("unsupported GitLab MR URL format: %s", raw)
 	}
 
-	// GitHub style: /owner/repo/pull/123
-	if isGitHubHost(host) {
+	if provider == repospec.ProviderGitHub {
 		for i := 0; i < len(parts)-1; i++ {
-			if parts[i] == "pull" && i >= 2 {
+			if parts[i] == "pull" {
 				num, err := strconv.Atoi(parts[i+1])
 				if err != nil {
 					return prRequest{}, fmt.Errorf("invalid PR number: %s", parts[i+1])
 				}
+				if i < 2 {
+					return prRequest{}, fmt.Errorf("invalid PR URL path: %s", u.Path)
+				}
 				return prRequest{
-					Provider: "github",
-					Host:     host,
-					Owner:    parts[i-2],
-					Repo:     parts[i-1],
-					Number:   num,
+					Endpoint: repospec.Endpoint{
+						Host:     host,
+						BasePath: basePath,
+						Provider: provider,
+					},
+					Owner:  parts[i-2],
+					Repo:   parts[i-1],
+					Number: num,
 				}, nil
 			}
 		}
@@ -622,4 +627,88 @@ func issueTitleFromLabel(label string, number int) string {
 	}
 	title := strings.TrimSpace(strings.TrimPrefix(trimmed, prefix))
 	return title
+}
+
+type endpointCandidate struct {
+	Provider repospec.Provider
+	BasePath string
+}
+
+func resolveEndpoint(ctx context.Context, mf *manifest.File, host, urlPath, flagProvider, flagBasePath string) (repospec.Endpoint, error) {
+	provider := repospec.Provider(flagProvider)
+	basePath := flagBasePath
+
+	if provider == "" && mf != nil {
+		candidates := findEndpointCandidates(mf, host)
+		if len(candidates) > 0 {
+			ep := matchEndpointByPath(candidates, urlPath)
+			if ep != nil {
+				provider = ep.Provider
+				if basePath == "" {
+					basePath = ep.BasePath
+				}
+			}
+		}
+	}
+
+	if provider == "" {
+		provider = detectProviderFromHost(host)
+		if provider == "" {
+			return repospec.Endpoint{}, fmt.Errorf("unknown provider for host %q. Use --provider (gitlab, github, bitbucket)", host)
+		}
+	}
+
+	return repospec.Endpoint{
+		Host:     host,
+		BasePath: basePath,
+		Provider: provider,
+	}, nil
+}
+
+func findEndpointCandidates(mf *manifest.File, host string) []endpointCandidate {
+	var candidates []endpointCandidate
+	eps := mf.FindEndpointsByHost(host)
+	for _, ep := range eps {
+		candidates = append(candidates, endpointCandidate{
+			Provider: repospec.Provider(ep.Provider),
+			BasePath: ep.BasePath,
+		})
+	}
+	return candidates
+}
+
+func matchEndpointByPath(candidates []endpointCandidate, urlPath string) *endpointCandidate {
+	var fallback *endpointCandidate
+	for _, c := range candidates {
+		if c.BasePath == "" {
+			continue
+		}
+		if strings.HasPrefix(urlPath, c.BasePath+"/") || urlPath == c.BasePath {
+			return &c
+		}
+		if strings.Contains(urlPath, c.BasePath) && fallback == nil {
+			fallback = &c
+		}
+	}
+	if fallback != nil {
+		return fallback
+	}
+	if len(candidates) > 0 {
+		return &candidates[0]
+	}
+	return nil
+}
+
+func detectProviderFromHost(host string) repospec.Provider {
+	lower := strings.ToLower(host)
+	if strings.Contains(lower, "gitlab") {
+		return repospec.ProviderGitLab
+	}
+	if strings.Contains(lower, "github") {
+		return repospec.ProviderGitHub
+	}
+	if strings.Contains(lower, "bitbucket") {
+		return repospec.ProviderBitbucket
+	}
+	return repospec.ProviderUnknown
 }

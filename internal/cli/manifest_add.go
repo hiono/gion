@@ -5,6 +5,7 @@ import (
 	"errors"
 	"flag"
 	"fmt"
+	"net/url"
 	"os"
 	"strconv"
 	"strings"
@@ -350,9 +351,6 @@ func runManifestAdd(ctx context.Context, rootDir string, args []string, globalNo
 		if branch != "" || baseRef != "" {
 			return fmt.Errorf("--branch and --base are not valid with --review")
 		}
-		if basePath != "" {
-			return fmt.Errorf("--base-path is not valid with --review")
-		}
 		prURL := ""
 		if len(remaining) == 1 {
 			prURL = remaining[0]
@@ -363,15 +361,12 @@ func runManifestAdd(ctx context.Context, rootDir string, args []string, globalNo
 			}
 			return fmt.Errorf("PR URL is required")
 		}
-		return manifestAddReviewURL(ctx, rootDir, prURL, apply)
+		return manifestAddReviewURL(ctx, rootDir, prURL, provider, basePath, apply)
 	}
 
 	if issueMode {
 		if len(remaining) > 1 {
 			return fmt.Errorf("usage: gion manifest add --issue <ISSUE_URL> [--branch <name>] [--base <ref>]")
-		}
-		if basePath != "" {
-			return fmt.Errorf("--base-path is not valid with --issue")
 		}
 		issueURL := ""
 		if len(remaining) == 1 {
@@ -383,7 +378,7 @@ func runManifestAdd(ctx context.Context, rootDir string, args []string, globalNo
 			}
 			return fmt.Errorf("issue URL is required")
 		}
-		return manifestAddIssueURL(ctx, rootDir, issueURL, branch, baseRef, noPrompt, apply)
+		return manifestAddIssueURL(ctx, rootDir, issueURL, branch, baseRef, noPrompt, provider, basePath, apply)
 	}
 
 	return fmt.Errorf("mode is required")
@@ -529,17 +524,30 @@ func manifestAddRepoWithSpec(ctx context.Context, rootDir, repoSpec, workspaceID
 	return apply(desired, showInputs, []string{workspaceID})
 }
 
-func manifestAddReviewURL(ctx context.Context, rootDir, prURL string, apply func(manifest.File, func(*ui.Renderer), []string) error) error {
+func manifestAddReviewURL(ctx context.Context, rootDir, prURL, flagProvider, flagBasePath string, apply func(manifest.File, func(*ui.Renderer), []string) error) error {
 	prURL = strings.TrimSpace(prURL)
-	req, err := parsePRURL(prURL)
+	u, err := url.Parse(prURL)
+	if err != nil {
+		return fmt.Errorf("invalid PR/MR URL: %w", err)
+	}
+	host := u.Hostname()
+	urlPath := u.Path
+
+	mf, _ := manifest.Load(rootDir)
+	endpoint, err := resolveEndpoint(ctx, &mf, host, urlPath, flagProvider, flagBasePath)
 	if err != nil {
 		return err
 	}
-	provider, err := ProviderByName(req.Provider)
+
+	req, err := parsePRURL(prURL, endpoint)
 	if err != nil {
 		return err
 	}
-	spec := repospec.RepoSpec{Endpoint: repospec.Endpoint{Host: req.Host}, Owner: req.Owner, Repo: req.Repo}
+	provider, err := ProviderByName(string(req.Endpoint.Provider))
+	if err != nil {
+		return err
+	}
+	spec := repospec.RepoSpec{Endpoint: req.Endpoint, Owner: req.Owner, Repo: req.Repo, Namespace: req.Owner, Project: req.Repo}
 	pr, err := provider.FetchMR(ctx, spec, req.Number)
 	if err != nil {
 		return err
@@ -579,7 +587,7 @@ func manifestAddReviewURL(ctx context.Context, rootDir, prURL string, apply func
 	} else if exists {
 		return fmt.Errorf("workspace exists on filesystem but missing in %s: %s (suggest: gion import)", manifest.FileName, workspaceID)
 	}
-	repoURL := buildRepoURLFromParts(req.Host, baseOwner, baseRepo)
+	repoURL := buildRepoURLFromParts(req.Endpoint.Host, baseOwner, baseRepo)
 	repoSpec, _, err := repo.Normalize(repoURL)
 	if err != nil {
 		return err
@@ -703,17 +711,30 @@ func manifestAddReviewSelected(ctx context.Context, rootDir string, repoSpec str
 	return apply(updated, showInputs, addedWorkspaceIDs)
 }
 
-func manifestAddIssueURL(ctx context.Context, rootDir, issueURL, branch, baseRef string, noPrompt bool, apply func(manifest.File, func(*ui.Renderer), []string) error) error {
+func manifestAddIssueURL(ctx context.Context, rootDir, issueURL, branch, baseRef string, noPrompt bool, flagProvider, flagBasePath string, apply func(manifest.File, func(*ui.Renderer), []string) error) error {
 	issueURL = strings.TrimSpace(issueURL)
-	req, err := parseIssueURL(issueURL)
+	u, err := url.Parse(issueURL)
+	if err != nil {
+		return fmt.Errorf("invalid issue URL: %w", err)
+	}
+	host := u.Hostname()
+	urlPath := u.Path
+
+	mf, _ := manifest.Load(rootDir)
+	endpoint, err := resolveEndpoint(ctx, &mf, host, urlPath, flagProvider, flagBasePath)
 	if err != nil {
 		return err
 	}
-	provider, err := ProviderByName(req.Provider)
+
+	req, err := parseIssueURL(issueURL, endpoint)
 	if err != nil {
-		return fmt.Errorf("unsupported issue provider: %s (available providers: gitlab, github, bitbucket)", req.Provider)
+		return err
 	}
-	spec := repospec.RepoSpec{Endpoint: repospec.Endpoint{Host: req.Host}, Owner: req.Owner, Repo: req.Repo}
+	provider, err := ProviderByName(string(req.Endpoint.Provider))
+	if err != nil {
+		return fmt.Errorf("unsupported issue provider: %s (available providers: gitlab, github, bitbucket)", req.Endpoint.Provider)
+	}
+	spec := repospec.RepoSpec{Endpoint: req.Endpoint, Owner: req.Owner, Repo: req.Repo, Namespace: req.Owner, Project: req.Repo}
 	issue, err := provider.FetchIssue(ctx, spec, req.Number)
 	if err != nil {
 		return err
@@ -731,7 +752,7 @@ func manifestAddIssueURL(ctx context.Context, rootDir, issueURL, branch, baseRef
 		return err
 	}
 
-	repoURL := buildRepoURLFromParts(req.Host, req.Owner, req.Repo)
+	repoURL := buildRepoURLFromParts(req.Endpoint.Host, req.Owner, req.Repo)
 	normalizedSpec, _, err := repo.Normalize(repoURL)
 	if err != nil {
 		return err
