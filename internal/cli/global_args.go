@@ -55,6 +55,27 @@ func normalizeGlobalArgs(args []string) ([]string, error) {
 			continue
 		}
 
+		// Global string flag: --provider <name> or --provider=<name>
+		if arg == "--provider" {
+			if i+1 >= len(args) {
+				return nil, fmt.Errorf("flag needs an argument: --provider")
+			}
+			next := args[i+1]
+			if next == "--" {
+				return nil, fmt.Errorf("flag needs an argument: --provider")
+			}
+			if strings.HasPrefix(next, "-") {
+				return nil, fmt.Errorf("flag needs an argument: --provider")
+			}
+			global = append(global, arg, next)
+			i++
+			continue
+		}
+		if strings.HasPrefix(arg, "--provider=") {
+			global = append(global, arg)
+			continue
+		}
+
 		// Global bool flags (also allow --flag=true style).
 		if _, ok := boolFlags[arg]; ok {
 			global = append(global, arg)

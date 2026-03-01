@@ -15,11 +15,13 @@ import (
 func Run() error {
 	fs := flag.NewFlagSet("gion", flag.ContinueOnError)
 	var rootFlag string
+	var providerFlag string
 	var noPrompt bool
 	var debugFlag bool
 	var helpFlag bool
 	var versionFlag bool
 	fs.StringVar(&rootFlag, "root", "", "override root")
+	fs.StringVar(&providerFlag, "provider", "", "override provider (github, gitlab, bitbucket)")
 	fs.BoolVar(&noPrompt, "no-prompt", false, "disable interactive prompt")
 	fs.BoolVar(&debugFlag, "debug", false, "write debug logs to file")
 	fs.BoolVar(&helpFlag, "help", false, "show help")
@@ -96,6 +98,8 @@ func Run() error {
 		return runImport(ctx, rootDir, args[1:], noPrompt)
 	case "apply":
 		return runApply(ctx, rootDir, args[1:], noPrompt)
+	case "config":
+		return runConfig(args[1:])
 	default:
 		return fmt.Errorf("unknown command: %s", args[0])
 	}

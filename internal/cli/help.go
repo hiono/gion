@@ -32,11 +32,13 @@ func printGlobalHelp(w io.Writer) {
 	fmt.Fprintln(w, helpCommand(theme, useColor, "apply", fmt.Sprintf("apply %s to filesystem", manifest.FileName)))
 	fmt.Fprintln(w, helpCommand(theme, useColor, "repo <subcommand>", "repo commands (get/ls/rm)"))
 	fmt.Fprintln(w, helpCommand(theme, useColor, "doctor [--fix | --self]", "check workspace/repo health"))
+	fmt.Fprintln(w, helpCommand(theme, useColor, "config", "view or set configuration"))
 	fmt.Fprintln(w, helpCommand(theme, useColor, "version", "print version"))
 	fmt.Fprintln(w, helpCommand(theme, useColor, "help [command]", "show help for a command"))
 	fmt.Fprintln(w, "")
 	fmt.Fprintln(w, helpSectionTitle(theme, useColor, "Global flags:"))
 	fmt.Fprintln(w, helpFlag(theme, useColor, "--root <path>", "override root"))
+	fmt.Fprintln(w, helpFlag(theme, useColor, "--provider <name>", "override provider (github, gitlab, bitbucket)"))
 	fmt.Fprintln(w, helpFlag(theme, useColor, "--no-prompt", "disable interactive prompt"))
 	fmt.Fprintln(w, helpFlag(theme, useColor, "--debug", "write debug logs to file"))
 	fmt.Fprintln(w, helpFlag(theme, useColor, "--version", "print version"))
@@ -61,6 +63,8 @@ func printCommandHelp(cmd string, w io.Writer) bool {
 		printInitHelp(w)
 	case "version":
 		printVersion(w)
+	case "config":
+		printConfigHelp(w)
 	default:
 		return false
 	}
@@ -243,4 +247,17 @@ func helpFlag(theme ui.Theme, useColor bool, flag, description string) string {
 		return fmt.Sprintf("  %s  %s", theme.Accent.Render(flag), description)
 	}
 	return fmt.Sprintf("  %-18s %s", flag, description)
+}
+
+func printConfigHelp(w io.Writer) {
+	theme, useColor := helpTheme(w)
+	fmt.Fprintln(w, "Usage: gion config [flags]")
+	fmt.Fprintln(w, "")
+	fmt.Fprintln(w, helpSectionTitle(theme, useColor, "Flags:"))
+	fmt.Fprintln(w, helpFlag(theme, useColor, "--set-provider", "set the default provider (github, gitlab, bitbucket)"))
+	fmt.Fprintln(w, helpFlag(theme, useColor, "--help, -h", "show help"))
+	fmt.Fprintln(w, "")
+	fmt.Fprintln(w, helpSectionTitle(theme, useColor, "Examples:"))
+	fmt.Fprintln(w, "  gion config              # Show current config")
+	fmt.Fprintln(w, "  gion config --set-provider gitlab  # Set default provider to GitLab")
 }
