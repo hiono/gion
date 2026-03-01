@@ -3,8 +3,14 @@ package cli
 import (
 	"context"
 	"fmt"
+	"os"
 	"strings"
+
+	corerepospec "github.com/tasuku43/gion-core/repospec"
 )
+
+// ProviderCustom is the provider type for non-standard hosts
+const ProviderCustom = "custom"
 
 type provider interface {
 	Name() string
@@ -12,6 +18,15 @@ type provider interface {
 	FetchIssue(ctx context.Context, host, owner, repoName string, number int) (issueSummary, error)
 	FetchPRs(ctx context.Context, host, owner, repoName string) ([]prSummary, error)
 	FetchPR(ctx context.Context, host, owner, repoName string, number int) (prSummary, error)
+}
+
+// WarnIfCustomProvider outputs a warning if the provider is custom (non-standard host).
+// This should be called after parsing a repository URL to alert users that API access
+// is not available for custom providers.
+func WarnIfCustomProvider(spec corerepospec.Spec) {
+	if string(spec.Provider) == ProviderCustom {
+		fmt.Fprintf(os.Stderr, "Warning: Custom provider detected for %s. API access not possible.\n", spec.Host)
+	}
 }
 
 type githubProvider struct{}

@@ -370,10 +370,12 @@ func runManifestAdd(ctx context.Context, rootDir string, args []string, globalNo
 }
 
 func normalizeRepoSpec(raw string) (string, error) {
-	_, trimmed, err := repo.Normalize(raw)
+	spec, trimmed, err := repo.Normalize(raw)
 	if err != nil {
 		return "", err
 	}
+	// Warn if the provider is custom (non-standard host)
+	WarnIfCustomProvider(spec)
 	return trimmed, nil
 }
 
@@ -757,8 +759,8 @@ func manifestAddIssueSelected(ctx context.Context, rootDir string, repoSpec stri
 		return fmt.Errorf("issue picker supports GitHub only for now: %s", spec.Host)
 	}
 	host := strings.TrimSpace(spec.Host)
-	owner := strings.TrimSpace(spec.Owner)
-	repoName := strings.TrimSpace(spec.Repo)
+	owner := strings.TrimSpace(spec.Registry.Group)
+	repoName := strings.TrimSpace(spec.Repository.Repo)
 
 	desired, err := manifest.Load(rootDir)
 	if err != nil {
