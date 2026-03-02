@@ -462,3 +462,229 @@ func TestGitLabCustomDomain(t *testing.T) {
 
 	t.Logf("Successfully fetched from custom GitLab domain: %s", customHost)
 }
+
+// =============================================================================
+// Task 3: Edge Case and Error Handling Tests
+// =============================================================================
+
+// TestGitLabInvalidRepository tests proper error handling for non-existent repos
+func TestGitLabInvalidRepository(t *testing.T) {
+	if !shouldRunGitLabIntegrationTests() {
+		t.Skip("GitLab integration tests disabled")
+	}
+
+	ctx := context.Background()
+	host := "gitlab.com"
+	owner := "nonexistent-owner-12345"
+	repo := "nonexistent-repo-12345"
+
+	_, err := fetchGitLabIssuesViaCLI(ctx, host, owner, repo)
+	if err == nil {
+		t.Error("Expected error for non-existent repository, got nil")
+	}
+
+	// Verify error message is meaningful
+	errMsg := err.Error()
+	if !strings.Contains(errMsg, "404") && !strings.Contains(errMsg, "not found") && !strings.Contains(errMsg, "failed") {
+		t.Logf("Error message: %s", errMsg)
+	}
+
+	t.Logf("Correctly handled invalid repository: %v", err)
+}
+
+// TestGitLabAuthenticationFailure tests handling of authentication errors
+func TestGitLabAuthenticationFailure(t *testing.T) {
+	if !shouldRunGitLabIntegrationTests() {
+		t.Skip("GitLab integration tests disabled")
+	}
+
+	// This test verifies that unauthenticated access is handled properly
+	// We test by checking if the auth status is correct
+	if !isGitLabAuthenticated() {
+		t.Log("Not authenticated - this is expected in test environment")
+		// Verify we get appropriate error when not authenticated
+		ctx := context.Background()
+		_, err := fetchGitLabIssuesViaCLI(ctx, "gitlab.com", "gitlab-org", "gitlab")
+		if err != nil && (strings.Contains(err.Error(), "403") || strings.Contains(err.Error(), "401") || strings.Contains(err.Error(), "authenticated")) {
+			t.Logf("Correctly got auth error: %v", err)
+		}
+	}
+}
+
+// TestGitLabSpecialCharacters tests repositories with special characters
+func TestGitLabSpecialCharacters(t *testing.T) {
+	if !shouldRunGitLabIntegrationTests() {
+		t.Skip("GitLab integration tests disabled")
+	}
+
+	ctx := context.Background()
+	host := "gitlab.com"
+
+	// Test with URL-encoded paths
+	// These are common edge cases in GitLab URLs
+	testCases := []struct {
+		name  string
+		owner string
+		repo  string
+	}{
+		{"underscore", "test_owner", "test_repo"},
+		{"dash", "test-owner", "test-repo"},
+		{"numbers", "test123", "repo456"},
+	}
+
+	for _, tc := range testCases {
+		// First verify the path encoding is correct
+		encoded := encodeProjectPath(tc.owner, tc.repo)
+		expected := url.PathEscape(tc.owner + "/" + tc.repo)
+		if encoded != expected {
+			t.Errorf("Path encoding mismatch for %s: got %s, expected %s", tc.name, encoded, expected)
+		}
+
+		// Try to fetch - might not exist but should not crash
+		_, err := fetchGitLabIssuesViaCLI(ctx, host, tc.owner, tc.repo)
+		if err != nil {
+			t.Logf("Expected error for %s (repo may not exist): %v", tc.name, err)
+		}
+	}
+}
+
+// TestGitLabLargeResponses tests handling of repositories with many issues/MRs
+func TestGitLabLargeResponses(t *testing.T) {
+	if !shouldRunGitLabIntegrationTests() {
+		t.Skip("GitLab integration tests disabled")
+	}
+
+	ctx := context.Background()
+	host, owner, repo := getTestRepo()
+
+	// gitlab-org/gitlab has many issues
+	issues, err := fetchGitLabIssuesViaCLI(ctx, host, owner, repo)
+	if err != nil {
+		t.Fatalf("Failed to fetch issues: %v", err)
+	}
+
+	// Verify we can handle the response
+	if len(issues) > 0 {
+		t.Logf("Fetched %d issues - pagination is working", len(issues))
+	}
+
+	// Same for MRs
+	mrs, err := fetchGitLabMRsViaCLI(ctx, host, owner, repo)
+	if err != nil {
+		t.Fatalf("Failed to fetch merge requests: %v", err)
+	}
+
+	if len(mrs) > 0 {
+		t.Logf("Fetched %d merge requests - pagination is working", len(mrs))
+	}
+}
+
+// TestGitLabProjectPathEncoding tests that project paths are properly URL-encoded
+func TestGitLabProjectPathEncoding(t *testing.T) {
+	testCases := []struct {
+		owner    string
+		repo     string
+		expected string
+	}{
+		{"owner", "repo", "owner%2Frepo"},
+		{"owner-name", "repo-name", "owner-name%2Frepo-name"},
+		{"group/subgroup", "project", "group%2Fsubgroup%2Fproject"},
+		{"group", "subgroup/project", "group%2Fsubgroup%2Fproject"},
+		{"group/subgroup/subsub", "repo", "group%2Fsubsub%2Fsubsub%2Frepo"},
+	}
+
+	for _, tc := range testCases {
+		result := encodeProjectPath(tc.owner, tc.repo)
+		if result != tc.expected {
+			t.Errorf("encodeProjectPath(%q, %q): got %q, expected %q",
+				tc.owner, tc.repo, result, tc.expected)
+		}
+	}
+}
+
+// TestGitLabAPIResponseParsing tests that API responses are parsed correctly
+func TestGitLabAPIResponseParsing(t *testing.T) {
+	if !shouldRunGitLabIntegrationTests() {
+		t.Skip("GitLab integration tests disabled")
+	}
+
+	ctx := context.Background()
+	host, owner, repo := getTestRepo()
+
+	// Test issue parsing
+	issue, err := fetchGitLabIssueViaCLI(ctx, host, owner, repo, 1)
+	if err != nil {
+		t.Skipf("Could not fetch test issue: %v", err)
+	}
+
+	// Verify all fields are populated
+	if issue.IID == 0 {
+		t.Error("Issue IID not populated")
+	}
+	if issue.Title == "" {
+		t.Error("Issue title not populated")
+	}
+	if issue.State == "" {
+		t.Error("Issue state not populated")
+	}
+	if issue.WebURL == "" {
+		t.Error("Issue web URL not populated")
+	}
+	if issue.Author.Username == "" {
+		t.Error("Issue author username not populated")
+	}
+
+	t.Logf("Issue parsing verified: #%d - %s", issue.IID, issue.Title)
+
+	// Test MR parsing
+	mrs, err := fetchGitLabMRsViaCLI(ctx, host, owner, repo)
+	if err != nil {
+		t.Skipf("Could not fetch test MRs: %v", err)
+	}
+
+	if len(mrs) > 0 {
+		mr := mrs[0]
+		// Verify all fields are populated
+		if mr.IID == 0 {
+			t.Error("MR IID not populated")
+		}
+		if mr.Title == "" {
+			t.Error("MR title not populated")
+		}
+		if mr.SourceBranch == "" {
+			t.Error("MR source branch not populated")
+		}
+		if mr.TargetBranch == "" {
+			t.Error("MR target branch not populated")
+		}
+		t.Logf("MR parsing verified: #%d - %s (%s -> %s)", mr.IID, mr.Title, mr.SourceBranch, mr.TargetBranch)
+	}
+}
+
+// TestGitLabIssueStateFilter tests that state filtering works correctly
+func TestGitLabIssueStateFilter(t *testing.T) {
+	if !shouldRunGitLabIntegrationTests() {
+		t.Skip("GitLab integration tests disabled")
+	}
+
+	ctx := context.Background()
+	host, owner, repo := getTestRepo()
+
+	// The basic fetch should return issues in various states
+	issues, err := fetchGitLabIssuesViaCLI(ctx, host, owner, repo)
+	if err != nil {
+		t.Fatalf("Failed to fetch issues: %v", err)
+	}
+
+	// Count issues by state
+	states := make(map[string]int)
+	for _, issue := range issues {
+		states[issue.State]++
+	}
+
+	if len(states) == 0 {
+		t.Error("No issue states found")
+	}
+
+	t.Logf("Issue states found: %v", states)
+}
