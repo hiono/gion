@@ -353,6 +353,172 @@ func normalizeGitHubPR(item githubPRItem) prSummary {
 	}
 }
 
+// GitLab API client functions
+
+type gitlabIssueItem struct {
+	Number int    `json:"iid"`
+	Title  string `json:"title"`
+}
+
+type gitlabMRItem struct {
+	Number   int    `json:"iid"`
+	Title    string `json:"title"`
+	Ref      string `json:"source_branch"`
+	BaseRef  string `json:"target_branch"`
+	HeadRepo string `json:"references,omitempty"`
+}
+
+func isGitLabHost(host string) bool {
+	lower := strings.ToLower(strings.TrimSpace(host))
+	return strings.Contains(lower, "gitlab")
+}
+
+func fetchGitLabIssues(ctx context.Context, host, owner, repoName string) ([]issueSummary, error) {
+	if strings.TrimSpace(owner) == "" || strings.TrimSpace(repoName) == "" {
+		return nil, fmt.Errorf("owner/repo is required")
+	}
+	// For nested groups, URL encode the path
+	projectPath := url.QueryEscape(fmt.Sprintf("%s/%s", owner, repoName))
+	endpoint := fmt.Sprintf("projects/%s/issues", projectPath)
+	args := []string{"api", "-X", "GET", endpoint, "-f", "state=opened", "-f", "order_by=updated_at", "-f", "sort=desc", "-f", "per_page=50"}
+	if host != "" && !strings.EqualFold(host, "gitlab.com") {
+		args = append([]string{"api", "--hostname", host}, args[1:]...)
+	}
+	stdout, stderr, err := runExternalCommand(ctx, "glab", args)
+	if err != nil {
+		msg := strings.TrimSpace(stderr)
+		if msg != "" {
+			return nil, fmt.Errorf("glab api failed: %s", msg)
+		}
+		return nil, fmt.Errorf("glab api failed: %w", err)
+	}
+	return parseGitLabIssues([]byte(stdout))
+}
+
+func fetchGitLabIssue(ctx context.Context, host, owner, repoName string, number int) (issueSummary, error) {
+	if strings.TrimSpace(owner) == "" || strings.TrimSpace(repoName) == "" || number <= 0 {
+		return issueSummary{}, fmt.Errorf("owner/repo and issue number are required")
+	}
+	projectPath := url.QueryEscape(fmt.Sprintf("%s/%s", owner, repoName))
+	endpoint := fmt.Sprintf("projects/%s/issues/%d", projectPath, number)
+	args := []string{"api", "-X", "GET", endpoint}
+	if host != "" && !strings.EqualFold(host, "gitlab.com") {
+		args = append([]string{"api", "--hostname", host}, args[1:]...)
+	}
+	stdout, stderr, err := runExternalCommand(ctx, "glab", args)
+	if err != nil {
+		msg := strings.TrimSpace(stderr)
+		if msg != "" {
+			return issueSummary{}, fmt.Errorf("glab api failed: %s", msg)
+		}
+		return issueSummary{}, fmt.Errorf("glab api failed: %w", err)
+	}
+	var item gitlabIssueItem
+	if err := json.Unmarshal([]byte(stdout), &item); err != nil {
+		return issueSummary{}, fmt.Errorf("parse glab api response: %w", err)
+	}
+	if item.Number == 0 {
+		return issueSummary{}, fmt.Errorf("issue not found")
+	}
+	return issueSummary{
+		Number: item.Number,
+		Title:  strings.TrimSpace(item.Title),
+	}, nil
+}
+
+func parseGitLabIssues(data []byte) ([]issueSummary, error) {
+	var raw []gitlabIssueItem
+	if err := json.Unmarshal(data, &raw); err != nil {
+		return nil, fmt.Errorf("parse glab api response: %w", err)
+	}
+	var issues []issueSummary
+	for _, item := range raw {
+		if item.Number == 0 {
+			continue
+		}
+		issues = append(issues, issueSummary{
+			Number: item.Number,
+			Title:  strings.TrimSpace(item.Title),
+		})
+	}
+	return issues, nil
+}
+
+func fetchGitLabMRs(ctx context.Context, host, owner, repoName string) ([]prSummary, error) {
+	if strings.TrimSpace(owner) == "" || strings.TrimSpace(repoName) == "" {
+		return nil, fmt.Errorf("owner/repo is required")
+	}
+	projectPath := url.QueryEscape(fmt.Sprintf("%s/%s", owner, repoName))
+	endpoint := fmt.Sprintf("projects/%s/merge_requests", projectPath)
+	args := []string{"api", "-X", "GET", endpoint, "-f", "state=opened", "-f", "order_by=updated_at", "-f", "sort=desc", "-f", "per_page=50"}
+	if host != "" && !strings.EqualFold(host, "gitlab.com") {
+		args = append([]string{"api", "--hostname", host}, args[1:]...)
+	}
+	stdout, stderr, err := runExternalCommand(ctx, "glab", args)
+	if err != nil {
+		msg := strings.TrimSpace(stderr)
+		if msg != "" {
+			return nil, fmt.Errorf("glab api failed: %s", msg)
+		}
+		return nil, fmt.Errorf("glab api failed: %w", err)
+	}
+	return parseGitLabMRs([]byte(stdout))
+}
+
+func fetchGitLabMR(ctx context.Context, host, owner, repoName string, number int) (prSummary, error) {
+	if strings.TrimSpace(owner) == "" || strings.TrimSpace(repoName) == "" || number <= 0 {
+		return prSummary{}, fmt.Errorf("owner/repo and MR number are required")
+	}
+	projectPath := url.QueryEscape(fmt.Sprintf("%s/%s", owner, repoName))
+	endpoint := fmt.Sprintf("projects/%s/merge_requests/%d", projectPath, number)
+	args := []string{"api", "-X", "GET", endpoint}
+	if host != "" && !strings.EqualFold(host, "gitlab.com") {
+		args = append([]string{"api", "--hostname", host}, args[1:]...)
+	}
+	stdout, stderr, err := runExternalCommand(ctx, "glab", args)
+	if err != nil {
+		msg := strings.TrimSpace(stderr)
+		if msg != "" {
+			return prSummary{}, fmt.Errorf("glab api failed: %s", msg)
+		}
+		return prSummary{}, fmt.Errorf("glab api failed: %w", err)
+	}
+	var item gitlabMRItem
+	if err := json.Unmarshal([]byte(stdout), &item); err != nil {
+		return prSummary{}, fmt.Errorf("parse glab api response: %w", err)
+	}
+	if item.Number == 0 {
+		return prSummary{}, fmt.Errorf("merge request not found")
+	}
+	return normalizeGitLabMR(item, owner, repoName), nil
+}
+
+func parseGitLabMRs(data []byte) ([]prSummary, error) {
+	var raw []gitlabMRItem
+	if err := json.Unmarshal(data, &raw); err != nil {
+		return nil, fmt.Errorf("parse glab api response: %w", err)
+	}
+	var prs []prSummary
+	for _, item := range raw {
+		if item.Number == 0 {
+			continue
+		}
+		prs = append(prs, normalizeGitLabMR(item, "", ""))
+	}
+	return prs, nil
+}
+
+func normalizeGitLabMR(item gitlabMRItem, owner, repoName string) prSummary {
+	return prSummary{
+		Number:   item.Number,
+		Title:    strings.TrimSpace(item.Title),
+		HeadRef:  strings.TrimSpace(item.Ref),
+		BaseRef:  strings.TrimSpace(item.BaseRef),
+		HeadRepo: strings.TrimSpace(item.HeadRepo),
+		BaseRepo: fmt.Sprintf("%s/%s", owner, repoName),
+	}
+}
+
 func encodeReviewSelection(pr prSummary) string {
 	escape := url.QueryEscape
 	return strings.Join([]string{

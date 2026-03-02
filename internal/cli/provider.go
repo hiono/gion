@@ -51,8 +51,31 @@ func (githubProvider) FetchPR(ctx context.Context, host, owner, repoName string,
 	return fetchGitHubPR(ctx, host, owner, repoName, number)
 }
 
+type gitlabProvider struct{}
+
+func (gitlabProvider) Name() string {
+	return "gitlab"
+}
+
+func (gitlabProvider) FetchIssues(ctx context.Context, host, owner, repoName string) ([]issueSummary, error) {
+	return fetchGitLabIssues(ctx, host, owner, repoName)
+}
+
+func (gitlabProvider) FetchIssue(ctx context.Context, host, owner, repoName string, number int) (issueSummary, error) {
+	return fetchGitLabIssue(ctx, host, owner, repoName, number)
+}
+
+func (gitlabProvider) FetchPRs(ctx context.Context, host, owner, repoName string) ([]prSummary, error) {
+	return fetchGitLabMRs(ctx, host, owner, repoName)
+}
+
+func (gitlabProvider) FetchPR(ctx context.Context, host, owner, repoName string, number int) (prSummary, error) {
+	return fetchGitLabMR(ctx, host, owner, repoName, number)
+}
+
 var providers = map[string]provider{
 	"github": githubProvider{},
+	"gitlab": gitlabProvider{},
 }
 
 func providerByName(name string) (provider, error) {
