@@ -553,6 +553,9 @@ func TestGitLabLargeResponses(t *testing.T) {
 	if !shouldRunGitLabIntegrationTests() {
 		t.Skip("GitLab integration tests disabled")
 	}
+	if !isGitLabAuthenticated() {
+		t.Skip("GitLab not authenticated - run 'glab auth login' to authenticate")
+	}
 
 	ctx := context.Background()
 	host, owner, repo := getTestRepo()
@@ -590,7 +593,8 @@ func TestGitLabProjectPathEncoding(t *testing.T) {
 		{"owner-name", "repo-name", "owner-name%2Frepo-name"},
 		{"group/subgroup", "project", "group%2Fsubgroup%2Fproject"},
 		{"group", "subgroup/project", "group%2Fsubgroup%2Fproject"},
-		{"group/subgroup/subsub", "repo", "group%2Fsubsub%2Fsubsub%2Frepo"},
+		// Note: url.PathEscape keeps "/" as "/" (path separator), only encodes other chars
+		{"group/subgroup/subsub", "repo", "group%2Fsubgroup%2Fsubsub%2Frepo"},
 	}
 
 	for _, tc := range testCases {
@@ -665,6 +669,9 @@ func TestGitLabAPIResponseParsing(t *testing.T) {
 func TestGitLabIssueStateFilter(t *testing.T) {
 	if !shouldRunGitLabIntegrationTests() {
 		t.Skip("GitLab integration tests disabled")
+	}
+	if !isGitLabAuthenticated() {
+		t.Skip("GitLab not authenticated - run 'glab auth login' to authenticate")
 	}
 
 	ctx := context.Background()
