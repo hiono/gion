@@ -741,20 +741,192 @@ func issueTitleFromLabel(label string, number int) string {
 	return title
 }
 
-// Bitbucket provider placeholder functions - to be implemented in future phase
+// Bitbucket API client functions
+
+type bitbucketIssueItem struct {
+	ID    int    `json:"id"`
+	Title string `json:"title"`
+	Type  string `json:"type"`
+	State string `json:"state"`
+}
+
+type bitbucketPRItem struct {
+	ID     int    `json:"id"`
+	Title  string `json:"title"`
+	Type   string `json:"type"`
+	State  string `json:"state"`
+	Source struct {
+		Branch struct {
+			Name string `json:"name"`
+		} `json:"branch"`
+		Repo struct {
+			FullName string `json:"full_name"`
+		} `json:"repository"`
+	} `json:"source"`
+	Destination struct {
+		Branch struct {
+			Name string `json:"name"`
+		} `json:"branch"`
+		Repo struct {
+			FullName string `json:"full_name"`
+		} `json:"repository"`
+	} `json:"destination"`
+}
+
+func isBitbucketHost(host string) bool {
+	lower := strings.ToLower(strings.TrimSpace(host))
+	return strings.Contains(lower, "bitbucket")
+}
 
 func fetchBitbucketIssues(ctx context.Context, host, owner, repoName string) ([]issueSummary, error) {
-	return nil, fmt.Errorf("bitbucket provider not yet implemented: use bb CLI for API access")
+	if strings.TrimSpace(owner) == "" || strings.TrimSpace(repoName) == "" {
+		return nil, fmt.Errorf("owner/repo is required")
+	}
+	// Bitbucket uses "workspace" but for public repos owner works
+	endpoint := fmt.Sprintf("/repositories/%s/%s/issues", owner, repoName)
+	args := []string{"api", "-X", "GET", endpoint, "-f", "state=OPEN", "-f", "pagelen=50"}
+	stdout, stderr, err := runExternalCommand(ctx, "bb", args)
+	if err != nil {
+		msg := strings.TrimSpace(stderr)
+		if msg != "" {
+			return nil, fmt.Errorf("bb api failed: %s", msg)
+		}
+		// Check if bb CLI is not found
+		if strings.Contains(strings.ToLower(err.Error()), "not found") || strings.Contains(err.Error(), "executable file not found") {
+			return nil, fmt.Errorf("bb CLI not found - install from https://github.com/Atlassian/bb-cli")
+		}
+		return nil, fmt.Errorf("bb api failed: %w", err)
+	}
+	return parseBitbucketIssues([]byte(stdout))
 }
 
 func fetchBitbucketIssue(ctx context.Context, host, owner, repoName string, number int) (issueSummary, error) {
-	return issueSummary{}, fmt.Errorf("bitbucket provider not yet implemented: use bb CLI for API access")
+	if strings.TrimSpace(owner) == "" || strings.TrimSpace(repoName) == "" || number <= 0 {
+		return issueSummary{}, fmt.Errorf("owner/repo and issue number are required")
+	}
+	endpoint := fmt.Sprintf("/repositories/%s/%s/issues/%d", owner, repoName, number)
+	args := []string{"api", "-X", "GET", endpoint}
+	stdout, stderr, err := runExternalCommand(ctx, "bb", args)
+	if err != nil {
+		msg := strings.TrimSpace(stderr)
+		if msg != "" {
+			return issueSummary{}, fmt.Errorf("bb api failed: %s", msg)
+		}
+		if strings.Contains(strings.ToLower(err.Error()), "not found") || strings.Contains(err.Error(), "executable file not found") {
+			return issueSummary{}, fmt.Errorf("bb CLI not found - install from https://github.com/Atlassian/bb-cli")
+		}
+		return issueSummary{}, fmt.Errorf("bb api failed: %w", err)
+	}
+	var item bitbucketIssueItem
+	if err := json.Unmarshal([]byte(stdout), &item); err != nil {
+		return issueSummary{}, fmt.Errorf("parse bb api response: %w", err)
+	}
+	if item.ID == 0 {
+		return issueSummary{}, fmt.Errorf("issue not found")
+	}
+	return issueSummary{
+		Number: item.ID,
+		Title:  strings.TrimSpace(item.Title),
+	}, nil
+}
+
+func parseBitbucketIssues(data []byte) ([]issueSummary, error) {
+	// Bitbucket API returns {"values": [...]}
+	var response struct {
+		Values []bitbucketIssueItem `json:"values"`
+	}
+	if err := json.Unmarshal(data, &response); err != nil {
+		return nil, fmt.Errorf("parse bb api response: %w", err)
+	}
+	var issues []issueSummary
+	for _, item := range response.Values {
+		if item.ID == 0 {
+			continue
+		}
+		// Only include actual issues (not pull requests)
+		if item.Type != "issue" {
+			continue
+		}
+		issues = append(issues, issueSummary{
+			Number: item.ID,
+			Title:  strings.TrimSpace(item.Title),
+		})
+	}
+	return issues, nil
 }
 
 func fetchBitbucketPRs(ctx context.Context, host, owner, repoName string) ([]prSummary, error) {
-	return nil, fmt.Errorf("bitbucket provider not yet implemented: use bb CLI for API access")
+	if strings.TrimSpace(owner) == "" || strings.TrimSpace(repoName) == "" {
+		return nil, fmt.Errorf("owner/repo is required")
+	}
+	endpoint := fmt.Sprintf("/repositories/%s/%s/pullrequests", owner, repoName)
+	args := []string{"api", "-X", "GET", endpoint, "-f", "state=OPEN", "-f", "pagelen=50"}
+	stdout, stderr, err := runExternalCommand(ctx, "bb", args)
+	if err != nil {
+		msg := strings.TrimSpace(stderr)
+		if msg != "" {
+			return nil, fmt.Errorf("bb api failed: %s", msg)
+		}
+		if strings.Contains(strings.ToLower(err.Error()), "not found") || strings.Contains(err.Error(), "executable file not found") {
+			return nil, fmt.Errorf("bb CLI not found - install from https://github.com/Atlassian/bb-cli")
+		}
+		return nil, fmt.Errorf("bb api failed: %w", err)
+	}
+	return parseBitbucketPRs([]byte(stdout))
 }
 
 func fetchBitbucketPR(ctx context.Context, host, owner, repoName string, number int) (prSummary, error) {
-	return prSummary{}, fmt.Errorf("bitbucket provider not yet implemented: use bb CLI for API access")
+	if strings.TrimSpace(owner) == "" || strings.TrimSpace(repoName) == "" || number <= 0 {
+		return prSummary{}, fmt.Errorf("owner/repo and PR number are required")
+	}
+	endpoint := fmt.Sprintf("/repositories/%s/%s/pullrequests/%d", owner, repoName, number)
+	args := []string{"api", "-X", "GET", endpoint}
+	stdout, stderr, err := runExternalCommand(ctx, "bb", args)
+	if err != nil {
+		msg := strings.TrimSpace(stderr)
+		if msg != "" {
+			return prSummary{}, fmt.Errorf("bb api failed: %s", msg)
+		}
+		if strings.Contains(strings.ToLower(err.Error()), "not found") || strings.Contains(err.Error(), "executable file not found") {
+			return prSummary{}, fmt.Errorf("bb CLI not found - install from https://github.com/Atlassian/bb-cli")
+		}
+		return prSummary{}, fmt.Errorf("bb api failed: %w", err)
+	}
+	var item bitbucketPRItem
+	if err := json.Unmarshal([]byte(stdout), &item); err != nil {
+		return prSummary{}, fmt.Errorf("parse bb api response: %w", err)
+	}
+	if item.ID == 0 {
+		return prSummary{}, fmt.Errorf("pull request not found")
+	}
+	return normalizeBitbucketPR(item), nil
+}
+
+func parseBitbucketPRs(data []byte) ([]prSummary, error) {
+	// Bitbucket API returns {"values": [...]}
+	var response struct {
+		Values []bitbucketPRItem `json:"values"`
+	}
+	if err := json.Unmarshal(data, &response); err != nil {
+		return nil, fmt.Errorf("parse bb api response: %w", err)
+	}
+	var prs []prSummary
+	for _, item := range response.Values {
+		if item.ID == 0 {
+			continue
+		}
+		prs = append(prs, normalizeBitbucketPR(item))
+	}
+	return prs, nil
+}
+
+func normalizeBitbucketPR(item bitbucketPRItem) prSummary {
+	return prSummary{
+		Number:   item.ID,
+		Title:    strings.TrimSpace(item.Title),
+		HeadRef:  strings.TrimSpace(item.Source.Branch.Name),
+		BaseRef:  strings.TrimSpace(item.Destination.Branch.Name),
+		HeadRepo: strings.TrimSpace(item.Source.Repo.FullName),
+		BaseRepo: strings.TrimSpace(item.Destination.Repo.FullName),
+	}
 }
