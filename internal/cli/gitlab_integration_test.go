@@ -241,3 +241,224 @@ func shouldRunGitLabIntegrationTests() bool {
 	// Check if glab is available
 	return isGitLabAvailable()
 }
+
+// =============================================================================
+// Task 2: Core GitLab Functionality Tests
+// =============================================================================
+
+// getTestRepo returns a known public GitLab repository for testing
+// Uses gitlab-org/gitlab as it's a well-known public repo with issues and MRs
+func getTestRepo() (host, owner, repo string) {
+	// Allow override via environment variables for custom testing
+	if host := os.Getenv("GITLAB_TEST_HOST"); host != "" {
+		owner := os.Getenv("GITLAB_TEST_OWNER")
+		repo := os.Getenv("GITLAB_TEST_REPO")
+		return host, owner, repo
+	}
+	// Default to gitlab-org/gitlab repository
+	return "gitlab.com", "gitlab-org", "gitlab"
+}
+
+// TestFetchGitLabIssues tests fetching issues from a GitLab repository
+func TestFetchGitLabIssues(t *testing.T) {
+	if !shouldRunGitLabIntegrationTests() {
+		t.Skip("GitLab integration tests disabled")
+	}
+
+	ctx := context.Background()
+	host, owner, repo := getTestRepo()
+
+	issues, err := fetchGitLabIssuesViaCLI(ctx, host, owner, repo)
+	if err != nil {
+		t.Fatalf("Failed to fetch GitLab issues: %v", err)
+	}
+
+	// Verify we got some results (gitlab-org/gitlab has many issues)
+	if len(issues) == 0 {
+		t.Log("No issues found - this might be expected for some repositories")
+	}
+
+	// Verify issue structure
+	for _, issue := range issues {
+		if issue.IID == 0 {
+			t.Error("Issue IID should not be zero")
+		}
+		if issue.Title == "" {
+			t.Error("Issue title should not be empty")
+		}
+		if issue.WebURL == "" {
+			t.Error("Issue web URL should not be empty")
+		}
+	}
+
+	t.Logf("Successfully fetched %d issues from %s/%s", len(issues), owner, repo)
+}
+
+// TestFetchGitLabIssue tests fetching a specific issue by number
+func TestFetchGitLabIssue(t *testing.T) {
+	if !shouldRunGitLabIntegrationTests() {
+		t.Skip("GitLab integration tests disabled")
+	}
+
+	ctx := context.Background()
+	host, owner, repo := getTestRepo()
+
+	// Fetch a specific issue - use issue #1 which should exist in gitlab-org/gitlab
+	issueNum := 1
+	issue, err := fetchGitLabIssueViaCLI(ctx, host, owner, repo, issueNum)
+	if err != nil {
+		t.Fatalf("Failed to fetch GitLab issue #%d: %v", issueNum, err)
+	}
+
+	// Verify issue structure
+	if issue.IID != issueNum {
+		t.Errorf("Expected issue IID %d, got %d", issueNum, issue.IID)
+	}
+	if issue.Title == "" {
+		t.Error("Issue title should not be empty")
+	}
+	if issue.WebURL == "" {
+		t.Error("Issue web URL should not be empty")
+	}
+
+	t.Logf("Successfully fetched issue #%d: %s", issue.IID, issue.Title)
+}
+
+// TestFetchGitLabMRs tests fetching merge requests from a GitLab repository
+func TestFetchGitLabMRs(t *testing.T) {
+	if !shouldRunGitLabIntegrationTests() {
+		t.Skip("GitLab integration tests disabled")
+	}
+
+	ctx := context.Background()
+	host, owner, repo := getTestRepo()
+
+	mrs, err := fetchGitLabMRsViaCLI(ctx, host, owner, repo)
+	if err != nil {
+		t.Fatalf("Failed to fetch GitLab merge requests: %v", err)
+	}
+
+	// Verify we got some results
+	if len(mrs) == 0 {
+		t.Log("No merge requests found - this might be expected for some repositories")
+	}
+
+	// Verify MR structure
+	for _, mr := range mrs {
+		if mr.IID == 0 {
+			t.Error("MR IID should not be zero")
+		}
+		if mr.Title == "" {
+			t.Error("MR title should not be empty")
+		}
+		if mr.WebURL == "" {
+			t.Error("MR web URL should not be empty")
+		}
+		if mr.SourceBranch == "" {
+			t.Error("MR source branch should not be empty")
+		}
+		if mr.TargetBranch == "" {
+			t.Error("MR target branch should not be empty")
+		}
+	}
+
+	t.Logf("Successfully fetched %d merge requests from %s/%s", len(mrs), owner, repo)
+}
+
+// TestFetchGitLabMR tests fetching a specific merge request by number
+func TestFetchGitLabMR(t *testing.T) {
+	if !shouldRunGitLabIntegrationTests() {
+		t.Skip("GitLab integration tests disabled")
+	}
+
+	ctx := context.Background()
+	host, owner, repo := getTestRepo()
+
+	// Fetch a specific MR - this may or may not exist depending on the repo
+	// Using a common pattern - we'll try to fetch and handle the case where it doesn't exist
+	mrNum := 1
+	mr, err := fetchGitLabMRViaCLI(ctx, host, owner, repo, mrNum)
+	if err != nil {
+		// Some repos might not have MR #1, that's ok
+		t.Logf("Could not fetch MR #%d (might not exist): %v", mrNum, err)
+		return
+	}
+
+	// Verify MR structure
+	if mr.IID != mrNum {
+		t.Errorf("Expected MR IID %d, got %d", mrNum, mr.IID)
+	}
+	if mr.Title == "" {
+		t.Error("MR title should not be empty")
+	}
+	if mr.WebURL == "" {
+		t.Error("MR web URL should not be empty")
+	}
+
+	t.Logf("Successfully fetched MR #%d: %s", mr.IID, mr.Title)
+}
+
+// TestGitLabNestedGroupSupport tests that nested group paths work correctly
+func TestGitLabNestedGroupSupport(t *testing.T) {
+	if !shouldRunGitLabIntegrationTests() {
+		t.Skip("GitLab integration tests disabled")
+	}
+
+	ctx := context.Background()
+	host := "gitlab.com"
+
+	// Test with a known nested group repository
+	// gitlab-org/security/gitlab has nested groups
+	testCases := []struct {
+		owner string
+		repo  string
+	}{
+		{"gitlab-org", "gitlab"},                // Simple case
+		{"gitlab-org", "security/dependencies"}, // Single level nested
+	}
+
+	for _, tc := range testCases {
+		projectPath := encodeProjectPath(tc.owner, tc.repo)
+		if projectPath != url.PathEscape(tc.owner+"/"+tc.repo) {
+			// The path should be URL-encoded
+			t.Logf("Encoded path for %s/%s: %s", tc.owner, tc.repo, projectPath)
+		}
+
+		// Try to fetch issues to verify the path works
+		_, err := fetchGitLabIssuesViaCLI(ctx, host, tc.owner, tc.repo)
+		if err != nil {
+			t.Logf("Could not fetch from %s/%s: %v", tc.owner, tc.repo, err)
+			continue
+		}
+		t.Logf("Successfully fetched from nested path: %s/%s", tc.owner, tc.repo)
+	}
+}
+
+// TestGitLabCustomDomain tests that custom GitLab domains work
+func TestGitLabCustomDomain(t *testing.T) {
+	if !shouldRunGitLabIntegrationTests() {
+		t.Skip("GitLab integration tests disabled")
+	}
+
+	// Test custom domain support if GITLAB_TEST_HOST is set
+	customHost := os.Getenv("GITLAB_TEST_HOST")
+	if customHost == "" {
+		t.Skip("Set GITLAB_TEST_HOST to test custom domain support")
+	}
+
+	ctx := context.Background()
+	owner := os.Getenv("GITLAB_TEST_OWNER")
+	repo := os.Getenv("GITLAB_TEST_REPO")
+
+	if owner == "" || repo == "" {
+		t.Fatal("GITLAB_TEST_OWNER and GITLAB_TEST_REPO must be set for custom domain tests")
+	}
+
+	// Try to fetch issues from custom domain
+	_, err := fetchGitLabIssuesViaCLI(ctx, customHost, owner, repo)
+	if err != nil {
+		t.Fatalf("Failed to fetch from custom domain %s: %v", customHost, err)
+	}
+
+	t.Logf("Successfully fetched from custom GitLab domain: %s", customHost)
+}
