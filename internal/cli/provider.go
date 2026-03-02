@@ -73,9 +73,32 @@ func (gitlabProvider) FetchPR(ctx context.Context, host, owner, repoName string,
 	return fetchGitLabMR(ctx, host, owner, repoName, number)
 }
 
+type bitbucketProvider struct{}
+
+func (bitbucketProvider) Name() string {
+	return "bitbucket"
+}
+
+func (bitbucketProvider) FetchIssues(ctx context.Context, host, owner, repoName string) ([]issueSummary, error) {
+	return fetchBitbucketIssues(ctx, host, owner, repoName)
+}
+
+func (bitbucketProvider) FetchIssue(ctx context.Context, host, owner, repoName string, number int) (issueSummary, error) {
+	return fetchBitbucketIssue(ctx, host, owner, repoName, number)
+}
+
+func (bitbucketProvider) FetchPRs(ctx context.Context, host, owner, repoName string) ([]prSummary, error) {
+	return fetchBitbucketPRs(ctx, host, owner, repoName)
+}
+
+func (bitbucketProvider) FetchPR(ctx context.Context, host, owner, repoName string, number int) (prSummary, error) {
+	return fetchBitbucketPR(ctx, host, owner, repoName, number)
+}
+
 var providers = map[string]provider{
-	"github": githubProvider{},
-	"gitlab": gitlabProvider{},
+	"github":    githubProvider{},
+	"gitlab":    gitlabProvider{},
+	"bitbucket": bitbucketProvider{},
 }
 
 func providerByName(name string) (provider, error) {

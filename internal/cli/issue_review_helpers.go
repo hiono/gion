@@ -740,3 +740,21 @@ func issueTitleFromLabel(label string, number int) string {
 	title := strings.TrimSpace(strings.TrimPrefix(trimmed, prefix))
 	return title
 }
+
+// Bitbucket provider placeholder functions - to be implemented in future phase
+
+func fetchBitbucketIssues(ctx context.Context, host, owner, repoName string) ([]issueSummary, error) {
+	return nil, fmt.Errorf("bitbucket provider not yet implemented: use bb CLI for API access")
+}
+
+func fetchBitbucketIssue(ctx context.Context, host, owner, repoName string, number int) (issueSummary, error) {
+	return issueSummary{}, fmt.Errorf("bitbucket provider not yet implemented: use bb CLI for API access")
+}
+
+func fetchBitbucketPRs(ctx context.Context, host, owner, repoName string) ([]prSummary, error) {
+	return nil, fmt.Errorf("bitbucket provider not yet implemented: use bb CLI for API access")
+}
+
+func fetchBitbucketPR(ctx context.Context, host, owner, repoName string, number int) (prSummary, error) {
+	return prSummary{}, fmt.Errorf("bitbucket provider not yet implemented: use bb CLI for API access")
+}
